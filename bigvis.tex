@@ -1,0 +1,168 @@
+\documentclass[journal]{vgtc}                % final (journal style)
+%\documentclass[review,journal]{vgtc}         % review (journal style)
+%\documentclass[widereview]{vgtc}             % wide-spaced review
+%\documentclass[preprint,journal]{vgtc}       % preprint (journal style)
+%\documentclass[electronic,journal]{vgtc}     % electronic version, journal
+
+%% Please note that the use of figures other than the optional teaser is not permitted on the first page
+%% of the journal version.  Figures should begin on the second page and be
+%% in CMYK or Grey scale format, otherwise, colour shifting may occur
+%% during the printing process.  Papers submitted with figures other than the optional teaser on the
+%% first page will be refused.
+
+\usepackage{mathptmx}
+\usepackage{graphicx}
+\usepackage{times}
+
+%% This turns references into clickable hyperlinks.
+\usepackage[bookmarks,backref=true,linkcolor=black]{hyperref} %,colorlinks
+\hypersetup{
+  pdfauthor = {},
+  pdftitle = {},
+  pdfsubject = {},
+  pdfkeywords = {},
+  colorlinks=true,
+  linkcolor= black,
+  citecolor= black,
+  pageanchor=true,
+  urlcolor = black,
+  plainpages = false,
+  linktocpage
+}
+
+%% If you are submitting a paper to a conference for review with a double
+%% blind reviewing process, please replace the value ``0'' below with your
+%% OnlineID. Otherwise, you may safely leave it at ``0''.
+\onlineid{0}
+
+%% declare the category of your paper, only shown in review mode
+\vgtccategory{Research}
+
+%% allow for this line if you want the electronic option to work properly
+% \vgtcinsertpkg
+
+%% In preprint mode you may define your own headline.
+%\preprinttext{To appear in an IEEE VGTC sponsored conference.}
+
+%% Paper title.
+
+\title{A visualisation framework for in-memory big data}
+
+%% indicate IEEE Member or Student Member in form indicated below
+\author{Hadley Wickham}
+\authorfooter{
+%% insert punctuation at end of each item
+\item
+ Hadley Wickham is Chief Scientist at RStudio. E-mail: h.wickham@gmail.com.
+}
+
+%other entries to be set up for journal
+\shortauthortitle{Wickham: A visualisation framework for in-memory big data}
+
+%% Abstract section.
+\abstract{
+
+Visualising ``big'' data is challenging both perceptually and computationally: it is hard to know what to display and hard to efficiently compute it once you've figured it out. This paper outlines a framework for displaying big in-memory datasets (i.e.\ 10-100 million observations) on commodity hardware. The framework is based around a five step process: group, summarise, smooth, standardise and visualise; and makes extensive use of statistical thinking to help minimise unfounded inferences.
+
+A reference implementation is provided by the {\tt bigvis} R package, which uses C++ for internal high-performance implementation, and an R wrapper to provide a user-friendly interface for analysts.
+} 
+
+%% Keywords that describe your work. Will show as 'Index Terms' in journal
+%% please capitalize first letter and insert punctuation after last keyword
+\keywords{Big data, kernel smoothing, kernel density estimation}
+
+%% ACM Computing Classification System (CCS). 
+%% See <http://www.acm.org/class/1998/> for details.
+\CCScatlist{ % not used in journal version
+  \category{H.5.2}{Information Interfaces and Presentation}%
+  {User Interfaces --- Graphical user interfaces (GUI), Interaction styles, Screen design, Evaluation/methodology}
+  \CCScat{I.6.8}{Computing Methodologies}%
+  {Simulation and Modeling}{Visual Simulation};
+}
+
+%% Uncomment below to include a teaser figure.
+%%  \teaser{
+%%    \centering
+%%    \includegraphics[width=16cm]{CypressView}
+%%    \caption{In the Clouds: Vancouver from Cypress Mountain.}
+%%  }
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%% START OF THE PAPER %%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+\firstsection{Introduction}
+
+\maketitle
+
+
+
+\section{Related work}
+
+\section{Group}
+
+Currently I have chosen to implement only one type of grouping for continuous data: grouping by 
+
+\section{Summarise}
+
+
+\section{The {\tt bigvis} package}
+
+A reference implementation of these ideas is provided in the .  The \url{http://github.com/hadley/bigvis} and the sources for the figures in this paper (including all data) can be found at a \url{http://github.com/hadley/bigvis-infovis}
+
+Rcpp package which provides an easy way to access R's internal datastructures with a clean C++ API.  C++ is extremely efficient and the data structures and algorithms provided by the STL make programming considerably faster.  The C++ code is by no means expert and uses only a smattering of advanced C++ functions; I have been programming in C++ for less than six months. There are likely to be considerable opportunities for further optimisation.
+
+For efficiency, the C++ makes extensive use of generic functions to avoid the cost of virtual method lookup (this is small, but it adds up when working with 100's of millions of observations).  This makes connecting R and C++ somewhat challenging since generic functions are specialised at compile time. To work around this problem, a small code generater generates all specialised versions of template functions using a naming convention, and then in R code the specialised function name is generated dynamically.  This is somewhat inelegant, but unavoidable when coupling programming languages with such different semantics.
+
+\subsection{Benchmarks}
+
+These benchmarks ignore the time needed to load the data into R, which is on the order of 3-5 seconds once it has been serialised in R's binary dataformat.  Unfortunately due to inefficiencies in the implementation of R's data frame strucutre, data frames can not be used to work with very large vectors without substantial performance penalities. Future work will hopefully address some of the deficiencies in R's data model and make it easier to work with large datasets.
+
+
+% 
+% \begin{table}
+% %% Table captions on top in journal version
+%  \caption{SciVis Paper Acceptance Rate: 1994-2006}
+%  \label{vis_accept}
+%  \scriptsize
+%  \begin{center}
+%    \begin{tabular}{cccc}
+%      Year & Submitted & Accepted & Accepted (\%)\\
+%    \hline
+%      1994 &  91 & 41 & 45.1\\
+%      1995 & 102 & 41 & 40.2\\
+%      1996 & 101 & 43 & 42.6\\
+%      1997 & 117 & 44 & 37.6\\
+%      1998 & 118 & 50 & 42.4\\
+%      1999 & 129 & 47 & 36.4\\
+%      2000 & 151 & 52 & 34.4\\
+%      2001 & 152 & 51 & 33.6\\
+%      2002 & 172 & 58 & 33.7\\
+%      2003 & 192 & 63 & 32.8\\
+%      2004 & 167 & 46 & 27.6\\
+%      2005 & 268 & 88 & 32.8\\
+%      2006 & 228 & 63 & 27.6
+%    \end{tabular}
+%  \end{center}
+% \end{table}
+
+\begin{figure}[htb]
+ \centering
+%  \includegraphics[width=1.5in]{sample}
+ \caption{Sample illustration.}
+\end{figure}
+
+\section{Conclusion}
+
+
+
+%% if specified like this the section will be committed in review mode
+\acknowledgments{
+The authors wish to thank Yue Hue who coded up many of the initial prototypes. Early versions of this work were generously sponsored by Revolution Analytics.}
+
+\bibliographystyle{abbrv}
+% bibtool -x product-graphics -o references.bib
+\bibliography{references}
+\end{document}

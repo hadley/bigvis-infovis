@@ -1,0 +1,20 @@
+library(productplots)
+library(plyr)
+
+x <- rnorm(1e5)
+df <- data.frame(x = round_any(x, 1))
+prodplot(df, ~ x, productplots:::set_offset("hbar", 0))
+prodplot(df, ~ x, "hspine", colour = "white")
+prodplot(df, ~ x, productplots:::set_offset("hspine", 0), colour = "white")
+
+x <- rnorm(5e5)
+df <- data.frame(x = round_any(x, 1 / 5))
+prodplot(df, ~ x, productplots:::set_offset("hbar", 0))
+prodplot(df, ~ x, "hspine", colour = "white")
+prodplot(df, ~ x, productplots:::set_offset("hspine", 0), colour = "white")
+
+x <- rnorm(1e6)
+df <- data.frame(x = round_any(x, 1 / 10))
+prodplot(df, ~ x, productplots:::set_offset("hbar", 0))
+prodplot(df, ~ x, "hspine", colour = "white")
+prodplot(df, ~ x, productplots:::set_offset("hspine", 0), colour = "white")
