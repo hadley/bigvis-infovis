@@ -102,9 +102,10 @@ As data grows ever larger, it is important that our ability to visualise it grow
 
 The insight that underlies this work is simple: the bottleneck for visualising large datasets is the number of pixels on a screen. For 1d dimensional summaries, we need on the order of 3,000 pixels; for 2d summaries, we need 3,000,000 pixels. There is no point displaying more data than that, and rathering than relying on the graphics rendering engine subsystem to reduce the data, we develop summaries built on well-known statistical principles. Interaction adds another dimension (time). While interaction is not the main focus of this paper, I will show how the framework does support interactive environments.
 
-The framework involves four steps: binning, summarising, smoothing and visualising. After a review of existing work, Section~\ref{sec:related-work}, much of which occured in the early 90s as statisticians worked to transition their algorithms from mainframes to PCs, the paper explores each component in turn.
+The framework involves four steps: binning, summarising, smoothing and visualising. This captures the most important 1d and 2d plots for statistical data: histograms and frequency polygons, kernel density estimates, local regression, loess \citep{cleveland:1979}, boxplots, and smoothed quantile regression \citep{koenker:2005}. It is also readly extensible to new visualisations that instead focus on higher moments (like standard deviation, skewness and kurtosis) instead of the mean or median.
 
-What types of plots does this lead to: histograms and kernel density estimates, local regression and loess.
+After a review of existing work, Section~\ref{sec:related-work}, much of which occured in the early 90s as statisticians worked to transition their algorithms from mainframes to PCs, the paper explores each component in turn.
+
 
 Section \ref{sec:bin} discusses binning. Fixed width binning is simple, but it's good to understand the drawbacks.
 
