@@ -13,6 +13,7 @@
 \usepackage{mathptmx}
 \usepackage{graphicx}
 \usepackage{times}
+\usepackage{natbib}
 
 %% This turns references into clickable hyperlinks.
 \usepackage[bookmarks,backref=true,linkcolor=black]{hyperref} %,colorlinks
@@ -46,7 +47,7 @@
 
 %% Paper title.
 
-\title{A visualisation framework for in-memory big data}
+\title{Bin-summarise-smooth: A framework for visualising large data}
 
 %% indicate IEEE Member or Student Member in form indicated below
 \author{Hadley Wickham}
@@ -62,14 +63,14 @@
 %% Abstract section.
 \abstract{
 
-Visualising ``big'' data is challenging both perceptually and computationally: it is hard to know what to display and hard to efficiently compute it once you've figured it out. This paper outlines a framework for displaying big in-memory datasets (i.e.\ 10-100 million observations) on commodity hardware. The framework is based around a five step process: group, summarise, smooth, standardise and visualise; and makes extensive use of statistical thinking to help minimise unfounded inferences.
+Visualising ``big'' data is challenging both perceptually and computationally: it is hard to know what to display and hard to efficiently display once you know. To tackle both problems, this paper outlines a framework for displaying large in-memory datasets (i.e.\ on the order of 100 million observations) on commodity hardware. It is based around a four step process: group, summarise, smooth, and visualise. Binning and summarising efficiently (O(n)) condense the large original data into a size suitable for display (recognising that there are on order of 3 million pixels on a screen). Smoothing helps resolve statistical problems from binning and summarising, and because the data is smaller, can use more sophisticated algorithms.
 
-A reference implementation is provided by the {\tt bigvis} R package, which uses C++ for internal high-performance implementation, and an R wrapper to provide a user-friendly interface for analysts.
+We provide a single-core in-memory implementation with the {\tt bigvis} R package that produces static visualisation, which uses C++ for internal high-performance implementation, and an R wrapper to provide a user-friendly interface for analysts. The framework is readily extensible to parallel out-of-memory solutions, and to interactive and dynamic graphics.
 } 
 
 %% Keywords that describe your work. Will show as 'Index Terms' in journal
 %% please capitalize first letter and insert punctuation after last keyword
-\keywords{Big data, kernel smoothing, kernel density estimation}
+\keywords{Big data, kernel smoothing}
 
 %% ACM Computing Classification System (CCS). 
 %% See <http://www.acm.org/class/1998/> for details.
@@ -97,28 +98,183 @@ A reference implementation is provided by the {\tt bigvis} R package, which uses
 
 \maketitle
 
+As data grows ever larger, it is important that our ability to visualise it grows too. This paper presents a novel framework for visualising large data that is designed to be both computationally and statistically efficient, dealing with both the challenges of what to display for very large datasets and how to display it fast enough for interactive exploration.
 
+The important insight that underlies this work is simple: the bottleneck for visualising large datasets is the number of pixels on a screen. For 1d dimensional summaries, we need on the order of 3 kilopixels; for 2d summaries, we need 3 megapixels.  There is no point displaying more data than that, and rathering than relying on the graphics rendering engine subsystem to reduce the data, we develop summaries built on well-known statistical principles. Interaction adds another dimension (time). While interaction is not the main focus of this paper, I will show how it also naturally supports interactive environments.
+
+The framework involves four steps: binning, summarising, smoothing and visualising. After a review of existing work, Section~\ref{sec:related-work} much of which occured in the early 90s as statisticians worked to transition their algorithms from mainframes to PCs, the paper explores each component in turn.
+
+Section \ref{sec:bin} discusses binning. Fixed width binning is simple, but it's good to understand the drawbacks.
+
+Picking good summaries involves a marriage of computational and statistical  concerns. Computationally, we want linear behaviour and the ability to parallelise, and statistically, we want summarises that are resistant to unusual values. Section~\ref{sec:summarise} discusses these tensions.  The computation of binning and summary reduces the data from size $n$ to size $m$, where $m$ is typically 3,000 for 1d summaries and 3,000,000 for 2d summaries.
+
+Tension between a flexible system that doesn't restrict the analyst to preconcieved visualisations, but equally has to be constrained to a domain where we can compute efficiently. The system based on binning and smoothing balances this tension well: binning is an extremely simple operation that can be implemented very efficiently; it has deficiencies but these can be compensated for with a smoothing algorithm. Smoothing is statistically efficient, but computationally hard, but smoothing binned data is fast and looses little statistical strength. The statistical literature is particularly important since it helps justifies our approximations, showing that they do not result in untoward loss of information.
+
+Smoothing, as discussed in Section~\ref{sec:smooth} is a critical part of this framework because it makes it possible to remedy some of the statistical problems with the simple, but fast, binning and summary steps. Because the smoothing occurs on the condensed data, the approach can be computationally much more expensive. This section summarises and unifies the existing extensive statistical work in this area.
+
+Even once we've reduced the data to manageable size, visualisation of large data presents some special challenges. In Section~\ref{sec:visualize}, we discuss generally how to visualise the condensed datasets, and some of the particular problems with very large data, notably problems caused ``unusual'' values.
+
+Section~\ref{sec:bigvis} discusses the open-source reference implementation that accompanies this paper. The R \citep{R} bigvis package, available from \url{http://github.com/hadley/bigvis}, uses a C++ for high-performance component and R for a user friendly CLI front end.  Additionally, the code to reproduce this paper and accompanying figures can be found at \url{http://github.com/hadley/bigvis}.
+
+The reference implementation provides some of the constraints that guide this paper. It is designed to be used by experienced analysts who will be using  sophisticated statistical and machine learning models in conjunction with visualisation.  It allows the analyst to create plots of 100,000,000 observations in under 5s. $10^8$ doubles occupy slighty under 800 Mb of memory, so about 20 vectors can be stored in 16 Gb of ram, with about 1 Gb left over. Support tiered model of data access: analyst may have access to billions or trillion of observation in a multi-machine data warehouse, but for most problems some interactive exploration is needed on a small subset or aggregate. 5s is an interactive timeframe for a REPL.  This is arbitrary but is currently about how long it takes to draw a scatterplot of 200,000. It's well above the threshold for direct manipulative interaction, but my personal experience seems to be on the order of what I expect when doing interactive data analysis in R.  Too much longer and I start chcking my email and my productivity goes down hill.
+
+Section~\ref{sec:conclusion} concludes with directions for future work, discussing how this framework extends naturally to multi-core, out-of-memory data, and how it could be adapted for the interactive analysis of large data.
 
 \section{Related work}
+\label{sec:related-work}
 
-\section{Group}
+Density estimation via alpha blending.
 
-Currently I have chosen to implement only one type of grouping for continuous data: grouping by 
+Hexbin: deal with gridded perceptual issues via smoothing.
+
+Literature search: all infovis/VGTC papers that mention kernel density estimation.  Inside the information visualisation community, there has been some use of kernel weighting techniques.  lampe uses kernel density estimates (they also re-discover kernel smoothing, but unfortunately don't connect it to existing literature)
+
+Draws on insights from product plots. And in someways it can be thought of as an extension to product plots to continuous data; with the constraint that only the final level can been a continuous display; which implies that even if higher levels are continuous they are coarsely binned.
+
+Much of the statistical ideas follows \citep{hardle:1992}, but I have made more clear the computational issues (as these are important if we are to actually use the techniques on large data), and linked it to visualisation of the results.
+
+\section{Bin}
+\label{sec:bin}
+
+The purpose of grouping is to map each data point to an integer.  This is a injective mapping, so that possibly many data points will be mapped to a single integer; this is the chief means by which this strategy deals with large data.
+
+Currently I have chosen to implement only one type of grouping for continuous data: grouping into evenly sized bins.  This can be implemented extremely efficiently ($\left | (x - origin) / width  \right |$), which is important as the grouping is one of the two main peformance bottlenecks. Statistically, there is a small issue with fixed bins: they tend to be too variable in regions of few data points (because the error is proportional to $\sqrt(1/n)$). However, there is currently no known algorithm that can do better: expanding the search space makes the problem significantly harder.  Under fairly wide assumptions, \citet{kogure:1987} found that fix bin sizes were globally optimal across all possible variable size algorithms.  Additionally, statistical problems with small bin sizes can be resolved in the smoothing step.
+
+(If non-fixed bins are known a prior, they can still be incorporated using an upper bound algorithm, which is $O(mn)$, where m is the number of bins. In practice, this is small, but may grows with $n$: as you get more data, you may want finer bins.)
+
+% Linear binning vs. simple binning
+
+The grouping algorithm is trivially extensible to multiple dimensions, provided you know how many bins each dimension needs. It is trivial to devise a perfect hashing function (a hash function with no collisions). In fact, it's a monotone minimal perfect hash. This makes binning in high dimensions extremely efficient, with the proviso that the bin is a integer, so can not store more than $2^32$ possible bins.  This seems like a lot but is quite small - 85 bin in each direction in 5 d and only 9 bins in each direction in 10d.  Outside that range can switch to standard hashing algorithms, albeit with a performance penalty because the algorithm will be more complex, and additional equality comparisons will be required. (Read citations on \url{http://en.wikipedia.org/wiki/Perfect_hash_function} and cite appropritately)
+
+$(x_1, x_2, \ldots, x_m)$. Assume we have $m$ dimensions, each taking possible values $0, 1, \ldots, n_m$ possible values.  Then we can create a monotone mapping $x_1 + x_2 * n_1 + x_3 * n_1 * n_2 * \cdots * x_m * \Pi^{n-1}_{i = 1} n_i$.
+
+This is easiest to illustrate with a 3d example where each dimension has 10 bins.  Then to determine the hash for the $(5, 0, 4)$, we compute $5 * 100 + 0 * 10 + 4 = 10 * (10 * 5 + 0) + 4$: $504$. To extract out the original bin positions from an integer, we just look at the remainder after dividing by 100, 10 and 1.
+
+% 523 = 5 * 10^2 + 2 * 10 ^ 1 + 3 * 1
+% 523 %/% 500 = (500, 23); 23 %/% 10 = (20, 3); 3 %/% 1 (3, 0)
+% (5, 3, 5) (10, 4, 5) -> (20, 5, 1)
+
+Important to think of this as a separate step, because it may often be performed outside of the visualisation environment, for example in the database layer. 
 
 \section{Summarise}
+\label{sec:summarise}
 
+Once each of the $n$ original data points has been labelled with a bin $m$ ($m << n$), the next step is to collapse each $n_m$ points into a fixed number of summary statistics, like the count, mean or standard deviation.
+
+It is useful to consider possible summary statistics in view of \citep{gray:1997}'s classification:
+
+\begin{itemize}
+  \item distributive, if the summaries can be computed for each group individually and then combined. Count, sum, min, and max are examples of distributive functions.
+  
+  \item algebraic, if you can compute the summary exactly if each group returns a fixed number of values. Mean, standard deviation, and topN are all algebraic. But while algebraic, the trivial implementations can have poor numerical properties. (Cite?)
+  
+  \item holistic, if you can't. e.g. median, count distinct, most frequent. For holistic algorithms, algebraic approximations may exist. E.g. for medians, and for count distinct, hyperloglog.  This is an active area of research, particularly important for streaming data since there is no way to hold all data in memory.
+
+\end{itemize}
+
+Advantage of algebraic and distributive is that results from subgroups can easily be combined. This has two benefits: firstly, it makes parallelisation trivial, as you can split the data into pieces, summarise each piece and then combine the results. It also supports a hierarchical approach where you first finely bin the data, and then re-bin to answer specific questions. For example, you may have 100 million original observations, which you bin into 100,000 bins; but for any specific 1d plot, you only need at most 5,000 bins (since you are unlikely to have a screen more than 5,000 pixels wide). This hierarchical approach also supports interactive visualisations because it will be considerably faster than going back to the original data each time.
+
+While the reference implementation is in-memory and single-core, parallelisation and out-of-memory datastores are obvious areas for  future work. We expect that fine pre-binning with simple summaries may be done in existing datastore; the grouping algorithm is trivial to implement in SQL, and most databases already provide simple summary statistics like the mean. Other databases, e.g.\ madlibs (), may provide richer summaries making grouping and summarisating in the database even more appealing. However, databases are is likely to be high-throughput and higher-latency than local computing. This suggests a workflow where we supplement fine prebinning in the database with coarser binning locally, especially when supporting interactive graphics.
+
+The mean, standard deviation and higher moments can all be computed in $O(n)$ time with $O(1)$ memory. And in fact, they can all be computed in a single pass through the data, although care is needed to avoid numerical problems (cite Welford 1962), and multi-pass algorithms are generally more numerical stable. The median also takes $O(n)$ time (using the quick select algorithm), but needs $O(m)$ memory: there is no way to compute the median without storing at least half of the data.
+
+To stay with our desired timing, we need to be able to compute each summary for 10,000 observations in $< 5 \mbox{s} / 10,000 = 0.5 \mbox{ms}$, so can not spend more than 50 ns on each observation. This is achievable with a high-performance language like C++; in the reference implementation computing the mean of $10^8$ observations in $10^4$ bins takes $\sim 2.8$s, the variance, $\sim 3$s; and the median, $\sim 5.8$s. \footnote{Timings performed on a 2.6 GHz Intel Core i7, 15\" MacBook retina} \footnote{These are likely to be upper bounds as I have only programmed in C++ for 6 months, and did not use any performance tricks}.  
+
+There is an interesting tension between the mean and the median: the median is much more robust to unusual values than the mean, but requires unbounded memory. One useful way to look at the robustness of a statistic is the {\bf breakdown point}.  The breakdown point of a summary is the proportion of observations an attacker needs to control before they can arbitrarily influence the resulting summary. It is 0 for the mean: if you can influence one value, you can force the mean to be any value you like. The breakdown point for the median is 0.5: you have to taint 50\% of the observations before you can arbitrarily change the median.  Despite an exhaustive search of the statistics literature, I have not found any robust statistics that are not holistic.
+
+There is no reason to limit ourselves to only 1d summary functions. 2d summaries like the correlation, or slope of a linear model may also be interesting. Any statistics from a linear model will be $O(n)$ in time and $O(1)$ in space (although again care will be required to compute in a numerically stable fashion), and thus suggest a fruitful ground for generalisations to higher dimensions.  The mean and standard deviation can both be thought of as summaries from a 0-d (intercept only) linear model. Other 2d summaries with a focus on computation speed will also be useful; the summaries of scagnostics \citep{wilkinson:2005} are an obvious starting place.
+
+Even if you do use robust statistics, you are only protected from scattered outliers, not a radical mismatch between the data and the summary: a mean and sd will never be a good summary if the data has two strong modes. For this reason, visualisation must be iterative - you can not collapse a variable to a summary until you have some confidence that the summary isn't throwing away important information. In practice, practitioners may need to develop their own summary statistics for the pecularities of the data they use; but the ones discussed here should provide a good start for general use.
+
+\subsection{Benchmarks}
+
+These benchmarks ignore the time needed to load the data into R, which is on the order of 3-5 seconds once it has been serialised in R's binary dataformat.  Unfortunately due to inefficiencies in the implementation of R's data frame strucutre, data frames can not be used to work with very large vectors without substantial performance penalities. Future work will hopefully address some of the deficiencies in R's data model and make it easier to work with large datasets.
+
+\section{Smooth}
+\label{sec:smooth}
+
+
+There are many approaches to smoothing: we adopted a kernel based method on top of binned data, because:
+
+\begin{itemize}
+  \item generalises in a straightforward manner to both density estimation and smoothing other summary statistics (like the mean).
+
+  \item is simple to implement, and is fast ($O(n)$, with small constants).
+  
+  \item there is much research on its error properties, and on how to select best amount of smoothing.
+  
+  \item kernel based smoothing is approximately equivalent to other more complicated types of smoothing \citep{silverman:1984}.
+  
+  \item is closely related to the {\sc loess} scatterplot smoother \citep{cleveland:1979} which is often used to overlay smooth curves on top of scatterplots
+
+\end{itemize}
+
+\subsection{Kernel density estimation, kernel smoothing and kernel regression}
+
+In the density estimation case, kernel weighting generalises the histogram to the average shifted histogram \citep{scott:1985} and the kernel density estimate \citep{scott:1992}. In the statitsical summary case, kernel weighting generalises the running mean to the kernel smooth with locally constant curves, and to kernel regression with locally linear curves (a specialisation of local regression).
+
+While closely related, these methods developed in different parts of statistics at different times, and the terminology is inconsistent. \citep{cleveland:1996} provides a good historical overview of kernel smoothing methods, and [?] a good overview of density estimation. In this paper, we will refer to these methods collectively as kernel weighting methods.
+
+The intution for these methods are simple, we want to weight our estimate at each location not just by the points exactly at that location, but also by nearby points. If we use points within a local neighbourhood, then we get the running mean:
+
+
+, giving more weight to points that are close than are far away.  
+
+\[
+  f(y_j) = \sum_{i = 1}^n K( \frac{x_j - x_i}{h} ) y_i 
+\]
+
+However, a straightforward weighted moving average has two major problems. First, kernel averages are biased on the boundaries, because the data lie only on one side of the estimation point.  Secondly, as \citep{macaulay:1931} puts it: ``A little thought or experimentation will quickly convince the reader that, so long as we restrict ourselves to positive weights, no moving average, weighted or unweighted, will exactly fit any mathematical curve except a straight line.''
+
+To overcome these problem, we move from weighted averages which are locally constant, to weighted linear regression, which is locally linear (a first degree Taylor approximation).  
+
+A similar progression occurs for count data: histogram, ASH, density plot, .
+
+It may seem like we have made the problem more complicated by introducing a number of new tuning parameters: the kernel function, $K$, the degree of the local polynomial, and the bandwidth. Fortunately there is a large body of existing experience to draw on. There is little evidence to suggest that the precise form of the kernel is important (CITE); Gaussian is common, as is the tri-cubic, or Epanechnikov. In practice, there seems to be little additional benefit to locally quadratic (or higher) terms \citep{cleveland:1996}.
+
+Most results about the asymptoptic efficiency of these estimates are based on the raw data. \citet{wand:1994} finds that binning adds insignificant error compared to the raw data .
+
+Small example of difference between histogram, frequency polygon and kernal density estimate.  Description of a limit (this seems like an interesting way to proceed in general, and would be interesting to see a through study of the limiting behaviour of continuous graphics).
+
+
+Smooth = convolution / blurring, and hence can be implemented extremely efficiently if both input and output are on fixed, evenly spaced grids (another reason for the fixed bin restriction). Direct convolution in my timings appeared to be faster than using the FFT, and the code was substantially more complicated (due to the extra padding needed to avoid the period wrapping of the fft).  It may be possible to do this faster by focussing on power of 2 bins, but this was not a bottleneck and I did not optimise further. \citep{wand:1994} suggests there may be more benefit to the FFT in higher-dimensions. There are certainly other performance optimisations available, such as computation on the GPU.
+
+
+\subsection{``Automatic'' bandwidth selection}
+
+It is common for kernel methods to provide an automatic estimation of the ``best'' bandwidth. We reject that philosophy because like with aspect ratio, there may be multiple ``best'' estimates, each which focusses on different parts of the overall story. Additionally, in a comprehensive study, \citet{loader:1999} found that classical plug-in estimates often performed worst than cross-valiation estimates, and did not perform better. One can also argue, as does \citep{denby:2009}, that the criterion that most papers minimise, integrated mean squared error, is not appopriate for visualisation. Finally, the perceptual costs of under or oversmoothing may not be equal; further research is needed.
+
+To make it easier to get started, we provide a cross-validation method (\citep{efron:1983}), which estimates error at multiple bandwidths and plots the results.  This makes possible to assess the senstivity of the choice, if there are multiple peaks and ...
+
+Intuitively, it seems like we should be able to do better with an adaptive binwidth: using small bins where there is more data, or where the curve is especially wiggly. However, the full story is more complex because to adapt the bandwidth, we need an estimate of the underlying density, and of the second derivative of the underlying curve, and the additional error in these estimates may swamp the benefit of an adaptive bandwidth. \citet{terrell:1992} found no benefit for density estimation, \citep{fan:1992,brockmann:1993,schucany:1995,herrmann:1997}.
+
+Nearest neighbour does all we need. 
+
+
+\section{Visualise}
+\label{sec:visualise}
+
+Another design principle (inspired by that of R) is that missing values should never be omitted without user intervention: they should always be preserved along the entire route from raw data to final visualisation. It is possible to remove them, but it must be a deliberate decisions: you never want to inadvertently distort your visualisations by silently leaving off data.
+
+
+1d: histogram, spinogram
+2d: image plot, contours, density, density + shading tints
+nd: proceed in the same way as productplots
+
+\subsection{Missing values}
+
+\subsection{Error}
+
+Vital that these displays
 
 \section{The {\tt bigvis} package}
+\label{sec:bigvis}
 
 A reference implementation of these ideas is provided in the .  The \url{http://github.com/hadley/bigvis} and the sources for the figures in this paper (including all data) can be found at a \url{http://github.com/hadley/bigvis-infovis}
 
 Rcpp package which provides an easy way to access R's internal datastructures with a clean C++ API.  C++ is extremely efficient and the data structures and algorithms provided by the STL make programming considerably faster.  The C++ code is by no means expert and uses only a smattering of advanced C++ functions; I have been programming in C++ for less than six months. There are likely to be considerable opportunities for further optimisation.
 
 For efficiency, the C++ makes extensive use of generic functions to avoid the cost of virtual method lookup (this is small, but it adds up when working with 100's of millions of observations).  This makes connecting R and C++ somewhat challenging since generic functions are specialised at compile time. To work around this problem, a small code generater generates all specialised versions of template functions using a naming convention, and then in R code the specialised function name is generated dynamically.  This is somewhat inelegant, but unavoidable when coupling programming languages with such different semantics.
-
-\subsection{Benchmarks}
-
-These benchmarks ignore the time needed to load the data into R, which is on the order of 3-5 seconds once it has been serialised in R's binary dataformat.  Unfortunately due to inefficiencies in the implementation of R's data frame strucutre, data frames can not be used to work with very large vectors without substantial performance penalities. Future work will hopefully address some of the deficiencies in R's data model and make it easier to work with large datasets.
 
 
 % 
@@ -155,14 +311,15 @@ These benchmarks ignore the time needed to load the data into R, which is on the
 \end{figure}
 
 \section{Conclusion}
+\label{sec:conclusion}
 
-
+Visualisation is only one piece of the data analysis puzzle: we also need tools for transforming and modelling big data. 
 
 %% if specified like this the section will be committed in review mode
 \acknowledgments{
-The authors wish to thank Yue Hue who coded up many of the initial prototypes. Early versions of this work were generously sponsored by Revolution Analytics.}
+The authors wish to thank Yue Hue who coded up many of the initial prototypes. And to JJ Allaire, Dirk Eddelbuettel, Romain Francois and Carlos Scheidegger for their help with C++. Early versions of this work were generously sponsored by Revolution Analytics.}
 
 \bibliographystyle{abbrv}
-% bibtool -x product-graphics -o references.bib
+% bibtool -x bigvis > references.bib
 \bibliography{references}
 \end{document}
