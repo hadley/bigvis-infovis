@@ -1,4 +1,43 @@
 
+@Article{abramson:1982,
+  author  = {Abramson, Ian S},
+  title   = {On bandwidth variation in kernel estimates-a square root law},
+  journal = {The Annals of Statistics},
+  keywords= {kernel},
+  number  = {4},
+  pages   = {1217--1223},
+  publisher={JSTOR},
+  volume  = {10},
+  year    = {1982}
+}
+
+@Conference{becker:1997,
+  author  = {Becker, B. G.},
+  title   = {Volume rendering for relational data},
+  booktitle={IEEE Transactions on Visualization and Computer Graphics (Proc.
+            InfoVis '97)},
+  ja      = {Information Visualization, 1997. Proceedings., IEEE Symposium
+            on},
+  journal = {Information Visualization, 1997. Proceedings., IEEE Symposium
+            on},
+  pages   = {87--90},
+  ty      = {CONF},
+  year    = {1997},
+  annote  = {Not about relational data - about big data. Bin in 3d, number of
+            points in bin determines opacity, then volume render with
+            gaussian splatting. Doesn't discuss many problems with this
+            (occlusion, opacity doesn't map will to continuous variables
+            effect of bin size and possition, etc). Doesn't generalise for
+            more than 3 variables. }
+}
+
+@Book{bowman:1997,
+  author  = {Bowman, Adrian W and Azzalini, Adelchi},
+  title   = {Applied smoothing techniques for data analysis},
+  publisher={Oxford University Press},
+  year    = {1997}
+}
+
 @Article{brockmann:1993,
   author  = {Brockmann, Michael and Gasser, Theo and Herrmann, Eva},
   title   = {Locally adaptive bandwidth choice for kernel regression
@@ -12,6 +51,18 @@
   year    = {1993}
 }
 
+@Article{carr:1987,
+  author  = {Carr, D. B. and Littlefield, R. J. and Nicholson, W. L. and
+            Littlefield, J. S.},
+  title   = {Scatterplot Matrix Techniques for Large {N}},
+  journal = {Journal of the American Statistical Association},
+  keywords= {large-data, plot/point},
+  number  = {398},
+  pages   = {424-436},
+  volume  = {82},
+  year    = {1987}
+}
+
 @Article{cleveland:1979,
   author  = {Cleveland, W.S.},
   title   = {Robust locally weighted regression and smoothing scatterplots},
@@ -22,13 +73,15 @@
   year    = {1979}
 }
 
-@Article{cleveland:1996,
+@InCollection{cleveland:1996,
   author  = {Cleveland, William S and Loader, Clive},
   title   = {Smoothing by local regression: Principles and methods},
-  journal = {Statistical theory and computational aspects of smoothing},
+  address = {New York},
+  booktitle={Statistical theory and computational aspects of smoothing},
+  editor  = {H\"ardle, W. and Schimek, M. G.},
   keywords= {kernel},
-  publisher={New York: Springer-Verlag},
-  volume  = {1049},
+  pages   = {10-49},
+  publisher={Springer},
   year    = {1996}
 }
 
@@ -62,9 +115,23 @@
   title   = {Variable bandwidth and local linear regression smoothers},
   journal = {The Annals of Statistics},
   keywords= {kernel},
+  number  = {4},
   pages   = {2008--2036},
   publisher={JSTOR},
+  volume  = {20},
   year    = {1992}
+}
+
+@Article{fan:1994,
+  author  = {Fan, Jianqing and Marron, James S},
+  title   = {Fast implementations of nonparametric curve estimators},
+  journal = {Journal of Computational and Graphical Statistics},
+  keywords= {kernel},
+  number  = {1},
+  pages   = {35--56},
+  publisher={Taylor \& Francis Group},
+  volume  = {3},
+  year    = {1994}
 }
 
 @Article{gray:1997,
@@ -90,6 +157,17 @@
   year    = {1992}
 }
 
+@Article{heer:2012,
+  author  = {Heer, Jeffrey and Kandel, Sean},
+  title   = {Interactive analysis of big data},
+  journal = {XRDS: Crossroads, The ACM Magazine for Students},
+  number  = {1},
+  pages   = {50--54},
+  publisher={ACM},
+  volume  = {19},
+  year    = {2012}
+}
+
 @Article{herrmann:1997,
   author  = {Herrmann, Eva},
   title   = {Local bandwidth choice in kernel regression estimation},
@@ -100,6 +178,18 @@
   publisher={Taylor \& Francis},
   volume  = {6},
   year    = {1997}
+}
+
+@Article{keim:2010,
+  author  = {Keim, Daniel A and Hao, Ming C and Dayal, Umeshwar and Janetzko,
+            Halldor and Bak, Peter},
+  title   = {Generalized scatter plots},
+  journal = {Information Visualization},
+  number  = {4},
+  pages   = {301--311},
+  publisher={SAGE Publications},
+  volume  = {9},
+  year    = {2010}
 }
 
 @Article{kogure:1987,
@@ -114,6 +204,16 @@
   year    = {1987}
 }
 
+@InProceedings{lampe:2011,
+  author  = {Lampe, Ove Daae and Hauser, Helwig},
+  title   = {Interactive visualization of streaming data with Kernel Density
+            Estimation},
+  booktitle={Pacific Visualization Symposium (PacificVis), 2011 IEEE},
+  organization={IEEE},
+  pages   = {171--178},
+  year    = {2011}
+}
+
 @Article{loader:1999,
   author  = {Loader, Clive R},
   title   = {Bandwidth selection: classical or plug-in?},
@@ -126,12 +226,31 @@
   year    = {1999}
 }
 
+@Book{loader:1999a,
+  author  = {Loader, Clive},
+  title   = {Local regression and likelihood},
+  address = {New York},
+  publisher={Springer},
+  year    = {1999}
+}
+
 @Book{macaulay:1931,
   author  = {Macaulay, Frederick R},
   title   = {The Smoothing of Time Series},
   keywords= {kernel},
   publisher={NBER},
   year    = {1931}
+}
+
+@Article{me:prodplots,
+  author  = {Wickham, Hadley and Hofmann, Heike},
+  title   = {Product plots},
+  journal = {IEEE Transactions on Visualization and Computer Graphics (Proc.
+            InfoVis '11)},
+  number  = {12},
+  pages   = {2223-2230 },
+  volume  = {17},
+  year    = {2011}
 }
 
 @Manual{r,
@@ -167,10 +286,25 @@
   year    = {1985}
 }
 
+@Article{scott:1985a,
+  author  = {Scott, David W},
+  title   = {Frequency polygons: theory and application},
+  journal = {Journal of the American Statistical Association},
+  keywords= {kernel},
+  number  = {390},
+  pages   = {348--354},
+  publisher={Taylor \& Francis},
+  volume  = {80},
+  year    = {1985}
+}
+
 @Book{scott:1992,
-  author  = {Scott, D.W.},
-  title   = {Multivariate density estimation},
-  publisher={Wiley Online Library},
+  author  = {Scott, David W},
+  title   = {Multivariate Density Estimation: Theory, Practice, and
+            Visualization},
+  address = {New York},
+  publisher={Wiley},
+  series  = {Wiley Series in Probability and Statistics},
   year    = {1992}
 }
 
@@ -214,4 +348,22 @@
   keywords= {cognostics},
   pages   = {157--164},
   year    = {2005}
+}
+
+@Article{yang:2003,
+  author  = {Yang, Li},
+  title   = {Visual exploration of large relational data sets through 3D
+            projections and footprint splatting},
+  journal = {IEEE Transactions on Knowledge and Data Engineering},
+  keywords= {tour},
+  number  = {6},
+  pages   = {1460 --1471},
+  volume  = {15},
+  year    = {2003},
+  annote  = {Again, doesn't display any the "relational-ness" of relational
+            databases. Projects to 3D (and then implicitly to 2d) with out
+            good justification. Introduces cluster-guided tour - four points
+            define view, pick centroids of 4 clusters (not grand tour
+            though). Same flaws as \cite{becker:1997}. Many technical details
+            of splatting.}
 }

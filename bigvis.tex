@@ -16,7 +16,7 @@
 \usepackage{natbib}
 
 %% This turns references into clickable hyperlinks.
-\usepackage[bookmarks,backref=true,linkcolor=black]{hyperref} %,colorlinks
+\usepackage[bookmarks,backref=false,linkcolor=black]{hyperref} %,colorlinks
 \hypersetup{
   pdfauthor = {},
   pdftitle = {},
@@ -100,19 +100,19 @@ We provide a single-core in-memory implementation with the {\tt bigvis} R packag
 
 As data grows ever larger, it is important that our ability to visualise it grows too. This paper presents a novel framework for visualising large data that is designed to be both computationally and statistically efficient, dealing with both the challenges of what to display for very large datasets and how to display it fast enough for interactive exploration.
 
-The important insight that underlies this work is simple: the bottleneck for visualising large datasets is the number of pixels on a screen. For 1d dimensional summaries, we need on the order of 3 kilopixels; for 2d summaries, we need 3 megapixels.  There is no point displaying more data than that, and rathering than relying on the graphics rendering engine subsystem to reduce the data, we develop summaries built on well-known statistical principles. Interaction adds another dimension (time). While interaction is not the main focus of this paper, I will show how it also naturally supports interactive environments.
+The insight that underlies this work is simple: the bottleneck for visualising large datasets is the number of pixels on a screen. For 1d dimensional summaries, we need on the order of 3,000 pixels; for 2d summaries, we need 3,000,000 pixels.  There is no point displaying more data than that, and rathering than relying on the graphics rendering engine subsystem to reduce the data, we develop summaries built on well-known statistical principles. Interaction adds another dimension (time). While interaction is not the main focus of this paper, I will show how the framework does support interactive environments.
 
-The framework involves four steps: binning, summarising, smoothing and visualising. After a review of existing work, Section~\ref{sec:related-work} much of which occured in the early 90s as statisticians worked to transition their algorithms from mainframes to PCs, the paper explores each component in turn.
+The framework involves four steps: binning, summarising, smoothing and visualising. After a review of existing work, Section~\ref{sec:related-work}, much of which occured in the early 90s as statisticians worked to transition their algorithms from mainframes to PCs, the paper explores each component in turn.
 
 Section \ref{sec:bin} discusses binning. Fixed width binning is simple, but it's good to understand the drawbacks.
 
-Picking good summaries involves a marriage of computational and statistical  concerns. Computationally, we want linear behaviour and the ability to parallelise, and statistically, we want summarises that are resistant to unusual values. Section~\ref{sec:summarise} discusses these tensions.  The computation of binning and summary reduces the data from size $n$ to size $m$, where $m$ is typically 3,000 for 1d summaries and 3,000,000 for 2d summaries.
+Picking good summaries involves a marriage of computational and statistical  concerns. Computationally, we want linear behaviour and the ability to parallelise, and statistically, we want summarises that are resistant to unusual values. Section~\ref{sec:summarise} discusses these tensions. The computation of binning and summary reduces the data from size $n$ to size $m$, where $m$ is typically 3,000 for 1d summaries and 3,000,000 for 2d summaries.
 
 Tension between a flexible system that doesn't restrict the analyst to preconcieved visualisations, but equally has to be constrained to a domain where we can compute efficiently. The system based on binning and smoothing balances this tension well: binning is an extremely simple operation that can be implemented very efficiently; it has deficiencies but these can be compensated for with a smoothing algorithm. Smoothing is statistically efficient, but computationally hard, but smoothing binned data is fast and looses little statistical strength. The statistical literature is particularly important since it helps justifies our approximations, showing that they do not result in untoward loss of information.
 
 Smoothing, as discussed in Section~\ref{sec:smooth} is a critical part of this framework because it makes it possible to remedy some of the statistical problems with the simple, but fast, binning and summary steps. Because the smoothing occurs on the condensed data, the approach can be computationally much more expensive. This section summarises and unifies the existing extensive statistical work in this area.
 
-Even once we've reduced the data to manageable size, visualisation of large data presents some special challenges. In Section~\ref{sec:visualize}, we discuss generally how to visualise the condensed datasets, and some of the particular problems with very large data, notably problems caused ``unusual'' values.
+Even once we've reduced the data to manageable size, visualisation of large data presents some special challenges. In Section~\ref{sec:visualise}, we discuss generally how to visualise the condensed datasets, and some of the particular problems with very large data, notably problems caused ``unusual'' values.  Focus on the most important 1d and 2d statistical graphics: the histogram and the scatterplot.
 
 Section~\ref{sec:bigvis} discusses the open-source reference implementation that accompanies this paper. The R \citep{R} bigvis package, available from \url{http://github.com/hadley/bigvis}, uses a C++ for high-performance component and R for a user friendly CLI front end.  Additionally, the code to reproduce this paper and accompanying figures can be found at \url{http://github.com/hadley/bigvis}.
 
@@ -123,22 +123,22 @@ Section~\ref{sec:conclusion} concludes with directions for future work, discussi
 \section{Related work}
 \label{sec:related-work}
 
-Density estimation via alpha blending.
+There is an extensive body of statistical research on density estimation (smooth histograms) and smoothing, stretching back to the early 70s. Three good summaries of the work are \cite{scott:1992,bowman:1997,loader:1999a}.    \cite{hardle:1992,wand:1994,fan:1994} focus on the computational side of the smooth estimators, and provide good advice for efficient implementation.  Surprisingly none recognise that simple kernel smoothing is a convolution, and in high-dimensions rearranging the order of the convolution can change the problem from $O(n^d)$ to $O(nd)$. These papers fail to treat some of the problems associated with visualising large data and are not accompanied by code.
 
-Hexbin: deal with gridded perceptual issues via smoothing.
+\citep{heer:2012} discusses the challenges of visualising large data, and proposes interaction as a solution. Emphasises the challenge of data cleaning and manipulation.
 
-Literature search: all infovis/VGTC papers that mention kernel density estimation.  Inside the information visualisation community, there has been some use of kernel weighting techniques.  lampe uses kernel density estimates (they also re-discover kernel smoothing, but unfortunately don't connect it to existing literature)
+\citep{lampe:2011} uses kernel density estimates in an infovis context, but fails to connect their work to existing statistical work. Provide a very fast implementation on the GPU, which presumably could be made even faster if they read previous work. Other techniques from infovis are related to kernel density estimation. Footprint splatting \citep{becker:1997,yang:2003} is exactly equivalent to kernel density estimation.  Similarly, using transparency as a way of dealing with overplotting, as in ..., can be seen as a special type of kernel density estimate where the kernel is a uniform radial point.
 
-Draws on insights from product plots. And in someways it can be thought of as an extension to product plots to continuous data; with the constraint that only the final level can been a continuous display; which implies that even if higher levels are continuous they are coarsely binned.
+There are other techniques to deal scatterplots of large data. Hexbin plots \citep{carr:1987} bin 2d data using hexagons to avoid the perceptual issues related to gridding. Generalised scatterplots \citep{keim:2010} use distortion, but no discussion of computational performance.  
 
-Much of the statistical ideas follows \citep{hardle:1992}, but I have made more clear the computational issues (as these are important if we are to actually use the techniques on large data), and linked it to visualisation of the results.
+Another way to think of this framework is as an extension of product plots \citep{me:prodplots} to continuous data.  
 
 \section{Bin}
 \label{sec:bin}
 
 The purpose of grouping is to map each data point to an integer.  This is a injective mapping, so that possibly many data points will be mapped to a single integer; this is the chief means by which this strategy deals with large data.
 
-Currently I have chosen to implement only one type of grouping for continuous data: grouping into evenly sized bins.  This can be implemented extremely efficiently ($\left | (x - origin) / width  \right |$), which is important as the grouping is one of the two main peformance bottlenecks. Statistically, there is a small issue with fixed bins: they tend to be too variable in regions of few data points (because the error is proportional to $\sqrt(1/n)$). However, there is currently no known algorithm that can do better: expanding the search space makes the problem significantly harder.  Under fairly wide assumptions, \citet{kogure:1987} found that fix bin sizes were globally optimal across all possible variable size algorithms.  Additionally, statistical problems with small bin sizes can be resolved in the smoothing step.
+Currently I have chosen to implement only one type of grouping for continuous data: grouping into evenly sized bins.  This can be implemented extremely efficiently ($\left | (x - origin) / width  \right |$), which is important as the grouping is one of the two main peformance bottlenecks. Statistically, there is a small issue with fixed bins: they tend to be too variable in regions of few data points (because the error is proportional to $\sqrt(1/n)$). However, there is currently no known algorithm that can do better: expanding the search space makes the problem significantly harder.  Under fairly wide assumptions, \cite{kogure:1987} found that fix bin sizes were globally optimal across all possible variable size algorithms.  Additionally, statistical problems with small bin sizes can be resolved in the smoothing step.
 
 (If non-fixed bins are known a prior, they can still be incorporated using an upper bound algorithm, which is $O(mn)$, where m is the number of bins. In practice, this is small, but may grows with $n$: as you get more data, you may want finer bins.)
 
@@ -232,7 +232,7 @@ A similar progression occurs for count data: histogram, ASH, density plot, .
 
 It may seem like we have made the problem more complicated by introducing a number of new tuning parameters: the kernel function, $K$, the degree of the local polynomial, and the bandwidth. Fortunately there is a large body of existing experience to draw on. There is little evidence to suggest that the precise form of the kernel is important (CITE); Gaussian is common, as is the tri-cubic, or Epanechnikov. In practice, there seems to be little additional benefit to locally quadratic (or higher) terms \citep{cleveland:1996}.
 
-Most results about the asymptoptic efficiency of these estimates are based on the raw data. \citet{wand:1994} finds that binning adds insignificant error compared to the raw data .
+Most results about the asymptoptic efficiency of these estimates are based on the raw data. \cite{wand:1994} finds that binning adds insignificant error compared to the raw data .
 
 Small example of difference between histogram, frequency polygon and kernal density estimate.  Description of a limit (this seems like an interesting way to proceed in general, and would be interesting to see a through study of the limiting behaviour of continuous graphics).
 
@@ -242,13 +242,16 @@ Smooth = convolution / blurring, and hence can be implemented extremely efficien
 
 \subsection{``Automatic'' bandwidth selection}
 
-It is common for kernel methods to provide an automatic estimation of the ``best'' bandwidth. We reject that philosophy because like with aspect ratio, there may be multiple ``best'' estimates, each which focusses on different parts of the overall story. Additionally, in a comprehensive study, \citet{loader:1999} found that classical plug-in estimates often performed worst than cross-valiation estimates, and did not perform better. One can also argue, as does \citep{denby:2009}, that the criterion that most papers minimise, integrated mean squared error, is not appopriate for visualisation. Finally, the perceptual costs of under or oversmoothing may not be equal; further research is needed.
+It is common for kernel methods to provide an automatic estimation of the ``best'' bandwidth. We reject that philosophy because like with aspect ratio, there may be multiple ``best'' estimates, each which focusses on different parts of the overall story. Additionally, in a comprehensive study, \cite{loader:1999} found that classical plug-in estimates often performed worst than cross-valiation estimates, and did not perform better. One can also argue, as does \citep{denby:2009}, that the criterion that most papers minimise, integrated mean squared error, is not appopriate for visualisation. Finally, the perceptual costs of under or oversmoothing may not be equal; further research is needed.
 
 To make it easier to get started, we provide a cross-validation method (\citep{efron:1983}), which estimates error at multiple bandwidths and plots the results.  This makes possible to assess the senstivity of the choice, if there are multiple peaks and ...
 
-Intuitively, it seems like we should be able to do better with an adaptive binwidth: using small bins where there is more data, or where the curve is especially wiggly. However, the full story is more complex because to adapt the bandwidth, we need an estimate of the underlying density, and of the second derivative of the underlying curve, and the additional error in these estimates may swamp the benefit of an adaptive bandwidth. \citet{terrell:1992} found no benefit for density estimation, \citep{fan:1992,brockmann:1993,schucany:1995,herrmann:1997}.
+Intuitively, it seems like we should be able to do better with an adaptive binwidth: using small bins where there is more data, or where the curve is especially wiggly. However, the full story is more complex because to adapt the bandwidth, we need an estimate of the underlying density, and of the second derivative of the underlying curve, and the additional error in these estimates may swamp the benefit of an adaptive bandwidth. \cite{terrell:1992} found no benefit for density estimation, \citep{fan:1992,brockmann:1993,schucany:1995,herrmann:1997}.
+
+\citep{abramson:1982}
 
 Nearest neighbour does all we need. 
+
 
 
 \section{Visualise}
@@ -256,10 +259,13 @@ Nearest neighbour does all we need.
 
 Another design principle (inspired by that of R) is that missing values should never be omitted without user intervention: they should always be preserved along the entire route from raw data to final visualisation. It is possible to remove them, but it must be a deliberate decisions: you never want to inadvertently distort your visualisations by silently leaving off data.
 
+Rather than drawing a histogram, we draw a frequency polygon \citep{scott:1985a}, where the centers of each bar are connected with a line.  Asymptotic arguments suggest this has slightly lower error than a histogram.
 
 1d: histogram, spinogram
 2d: image plot, contours, density, density + shading tints
 nd: proceed in the same way as productplots
+
+Draws on insights from product plots. And in someways it can be thought of as an extension to product plots to continuous data; with the constraint that only the final level can been a continuous display; which implies that even if higher levels are continuous they are coarsely binned.
 
 \subsection{Missing values}
 
@@ -321,5 +327,6 @@ The authors wish to thank Yue Hue who coded up many of the initial prototypes. A
 
 \bibliographystyle{abbrv}
 % bibtool -x bigvis > references.bib
+\newpage
 \bibliography{references}
 \end{document}
