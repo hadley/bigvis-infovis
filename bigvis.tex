@@ -100,9 +100,11 @@ We provide a single-core in-memory implementation with the {\tt bigvis} R packag
 
 As data grows ever larger, it is important that our ability to visualise it grows too. This paper presents a novel framework for visualising large data that is designed to be both computationally and statistically efficient, dealing with both the challenges of what to display for very large datasets and how to display it fast enough for interactive exploration.
 
-The insight that underlies this work is simple: the bottleneck for visualising large datasets is the number of pixels on a screen. For 1d dimensional summaries, we need on the order of 3,000 pixels; for 2d summaries, we need 3,000,000 pixels.  There is no point displaying more data than that, and rathering than relying on the graphics rendering engine subsystem to reduce the data, we develop summaries built on well-known statistical principles. Interaction adds another dimension (time). While interaction is not the main focus of this paper, I will show how the framework does support interactive environments.
+The insight that underlies this work is simple: the bottleneck for visualising large datasets is the number of pixels on a screen. For 1d dimensional summaries, we need on the order of 3,000 pixels; for 2d summaries, we need 3,000,000 pixels. There is no point displaying more data than that, and rathering than relying on the graphics rendering engine subsystem to reduce the data, we develop summaries built on well-known statistical principles. Interaction adds another dimension (time). While interaction is not the main focus of this paper, I will show how the framework does support interactive environments.
 
 The framework involves four steps: binning, summarising, smoothing and visualising. After a review of existing work, Section~\ref{sec:related-work}, much of which occured in the early 90s as statisticians worked to transition their algorithms from mainframes to PCs, the paper explores each component in turn.
+
+What types of plots does this lead to: histograms and kernel density estimates, local regression and loess.
 
 Section \ref{sec:bin} discusses binning. Fixed width binning is simple, but it's good to understand the drawbacks.
 
@@ -136,25 +138,24 @@ Another way to think of this framework is as an extension of product plots \cite
 \section{Bin}
 \label{sec:bin}
 
-The purpose of grouping is to map each data point to an integer.  This is a injective mapping, so that possibly many data points will be mapped to a single integer; this is the chief means by which this strategy deals with large data.
+The first stage of the process is to condense the data, reducing millions of data points to approximately one summary per pixel available on the screen.  To do this we must first determine how to group the data into bins; in other words, we need to assign each data point to an integer. We want an injective mapping, so that many data points will be mapped to a single integer; this is the chief means by which this framework deals with large data. Important to think of this as a separate step, because it may often be performed outside of the visualisation environment, for example in the database layer. 
 
-Currently I have chosen to implement only one type of grouping for continuous data: grouping into evenly sized bins.  This can be implemented extremely efficiently ($\left | (x - origin) / width  \right |$), which is important as the grouping is one of the two main peformance bottlenecks. Statistically, there is a small issue with fixed bins: they tend to be too variable in regions of few data points (because the error is proportional to $\sqrt(1/n)$). However, there is currently no known algorithm that can do better: expanding the search space makes the problem significantly harder.  Under fairly wide assumptions, \cite{kogure:1987} found that fix bin sizes were globally optimal across all possible variable size algorithms.  Additionally, statistical problems with small bin sizes can be resolved in the smoothing step.
+The most important type of binning is {\bf fixed width binning}. Fixed width binning is parameterised by two variables, the origin and the width, and can be computed extremely efficiently using $\left \lfloor (x - origin) / width \right \rfloor $. Fixed width binning is extremely computationally efficient, easily extended from 1d to nd, and while statistically na\"ive, there is little evidence that variable binwidths do better.
 
-(If non-fixed bins are known a prior, they can still be incorporated using an upper bound algorithm, which is $O(mn)$, where m is the number of bins. In practice, this is small, but may grows with $n$: as you get more data, you may want finer bins.)
+1d binning is easily extensible to multiple dimensions. We first bin each dimension, giving a vector of integers, $(x_1, x_2, ..., x_m)$. It is simple to devise a bijective map between a vector of integers and a single integer if we know the highest bin in each dimension. If we have $m$ dimensions, each taking possible values $0, 1, \ldots, n_m$, then we can collapse the vector of integers into a single integer using this formula:
+
+\[ x_1 + x_2 \cdot n_1 + x_3 \cdot n_1 \cdot n_2 + \cdots + x_m * \Pi^{n-1}_{i = 1} n_i = \]
+\[ x_1 + n_1 \cdot (x_2 + n_2 \cdot (x_3 + \cdots(x_m)) \]
+
+It is easy to see how this works if each dimension has ten bins. For example, to project 3d bin $(5, 0, 4)$ into 1d, we compute $5 + 0 * 10 + 4 * 100 = 4 + 10 * (0 + 10 * 5) = 405$. Given a single integer, we can find the nd bins by reversing the transformation, peeling off the integer remainder after dividing by 10. For example, 1d bin $356$ corresponds to 3d bin $(6, 5, 3)$.
+
+This function turns out to be a monotone minimal perfect hash \citep{belazzougui:2009}, which means highly efficient data structures are avaialble to work with it. Even if this data structure is not used (as in the reference implementation), it easy to efficiently summarise bins in high-dimensions using standard data structures (either a vector if most bins have data in them, or a hash if not).
+
+Statistically, there is a small issue with fixed bins: they tend to be too variable in regions of few data points (because the error of summaries is typically proportional to $\sqrt(1/n)$). Ideally, we would vary the width of the bins so that there are more bins where we have more data and fewer bins where we have less data. However evidence from asymptotic analysis is not promising: for the histogram, \cite{kogure:1987} found that fixed bins were globally optimal across all possible variable size algorithms under fairly wide assumptions. The challenge is that as we expand the space of possible binwidths, finding the optima in that space becomes significantly harder. 
 
 % Linear binning vs. simple binning
 
-The grouping algorithm is trivially extensible to multiple dimensions, provided you know how many bins each dimension needs. It is trivial to devise a perfect hashing function (a hash function with no collisions). In fact, it's a monotone minimal perfect hash. This makes binning in high dimensions extremely efficient, with the proviso that the bin is a integer, so can not store more than $2^32$ possible bins.  This seems like a lot but is quite small - 85 bin in each direction in 5 d and only 9 bins in each direction in 10d.  Outside that range can switch to standard hashing algorithms, albeit with a performance penalty because the algorithm will be more complex, and additional equality comparisons will be required. (Read citations on \url{http://en.wikipedia.org/wiki/Perfect_hash_function} and cite appropritately)
-
-$(x_1, x_2, \ldots, x_m)$. Assume we have $m$ dimensions, each taking possible values $0, 1, \ldots, n_m$ possible values.  Then we can create a monotone mapping $x_1 + x_2 * n_1 + x_3 * n_1 * n_2 * \cdots * x_m * \Pi^{n-1}_{i = 1} n_i$.
-
-This is easiest to illustrate with a 3d example where each dimension has 10 bins.  Then to determine the hash for the $(5, 0, 4)$, we compute $5 * 100 + 0 * 10 + 4 = 10 * (10 * 5 + 0) + 4$: $504$. To extract out the original bin positions from an integer, we just look at the remainder after dividing by 100, 10 and 1.
-
-% 523 = 5 * 10^2 + 2 * 10 ^ 1 + 3 * 1
-% 523 %/% 500 = (500, 23); 23 %/% 10 = (20, 3); 3 %/% 1 (3, 0)
-% (5, 3, 5) (10, 4, 5) -> (20, 5, 1)
-
-Important to think of this as a separate step, because it may often be performed outside of the visualisation environment, for example in the database layer. 
+% proviso that the bin is a integer, so can not store more than $2^32$ possible bins. (This seems like a lot but shrinks quickly as the number of dimensions grows: it's 85 bin in each direction in 5d and only 9 bins in each direction in 10d).  Outside that range can switch to standard hashing algorithms, albeit with a performance penalty because the algorithm will be more complex, and additional equality comparisons will be required. (Read citations on \url{http://en.wikipedia.org/wiki/Perfect_hash_function} and cite appropritately)
 
 \section{Summarise}
 \label{sec:summarise}
@@ -250,8 +251,11 @@ Intuitively, it seems like we should be able to do better with an adaptive binwi
 
 \citep{abramson:1982}
 
+\subsection{Varying bandwidths}
+
 Nearest neighbour does all we need. 
 
+For the kernel density estimate, \citep{abramson:1982} explored a two-pass procedure varying the bandwidth proportional to the square root of the density, but \cite{terrell:1992} showed that in practice the desired error level is not reached. 
 
 
 \section{Visualise}
