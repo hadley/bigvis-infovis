@@ -192,69 +192,56 @@ Finally, there is no reason to limit ourselves to only 1d summary functions. 2d 
 \section{Smooth}
 \label{sec:smooth}
 
-
-There are many approaches to smoothing: we adopted a kernel based method on top of binned data, because:
+Smoothing is an important additional step after summarising because it allows us to resolve problems with excessive variability in the summarised statistics. This variability may arise because the bin size is too small, or because there are unusual values in the bin. There are many approaches to smoothing, but we suggest a family of kernel based methods, because:
 
 \begin{itemize}
-  \item generalises in a straightforward manner to both density estimation and smoothing other summary statistics (like the mean).
-
-  \item is simple to implement, and is fast ($O(n)$, with small constants).
+  \item they are simple to implement and are fast.
   
-  \item there is much research on its error properties, and on how to select best amount of smoothing.
+  \item performing kernel smoothing on binned data instead of raw data adds insignificant error \cite{wand:1994} 
   
-  \item kernel based smoothing is approximately equivalent to other more complicated types of smoothing \citep{silverman:1984}.
+  \item kernel methods are approximately equivalent to other more complicated types of smoothing \citep{silverman:1984}.
   
-  \item is closely related to the {\sc loess} scatterplot smoother \citep{cleveland:1979} which is often used to overlay smooth curves on top of scatterplots
+  \item kernel methods form the heart of many existing statistical visualisations such as the kernel density estimator \citep{scott:1992} and average shifted histogram \citep{scott:1985} and loess \citep{cleveland:1979}.
 
 \end{itemize}
 
-\subsection{Kernel density estimation, kernel smoothing and kernel regression}
+There are three techniques in our family: kernel means (aka Nadaraya-Watston smoothing), kernel regression (aka local regression) and robust kernel regression (aka loess). These effectively improve upon a simple moving average, and provide a smooth tradeoff of computational performance vs.\ statistical performance. While closely related, these methods developed in different parts of statistics at different times, and the terminology is inconsistent. \citep{cleveland:1996} provides a good historical overview of kernel smoothing methods, and [?] a good overview of density estimation.
 
-In the density estimation case, kernel weighting generalises the histogram to the average shifted histogram \citep{scott:1985} and the kernel density estimate \citep{scott:1992}. In the statitsical summary case, kernel weighting generalises the running mean to the kernel smooth with locally constant curves, and to kernel regression with locally linear curves (a specialisation of local regression).
+The intution for these methods are simple, we want to smooth the value at each location by taking into account the neighbouring points. The weight closer points more heavily than distant points we use a {\bf kernel function}. Many kernels are available, but there is little evidence to suggest that the precise form of the kernel is important. Gaussian is common, but we use the triweight, $K(x) = (1 - |x^3|)^2 I_{|x| < 1}$, because it is bounded and simple (evaluation of this function is about 10x faster than evaluation of the Gaussian kernel).  
 
-While closely related, these methods developed in different parts of statistics at different times, and the terminology is inconsistent. \citep{cleveland:1996} provides a good historical overview of kernel smoothing methods, and [?] a good overview of density estimation. In this paper, we will refer to these methods collectively as kernel weighting methods.
+At each binned location we have $x_i$, the center of the bin, $y_i$ the summary of that bin and $w_i$ the number of observations in that bin. To predict a smooth estimate at position $j$, we first compute the kernel weights for each location $k_i = K(\frac{x_j - x_i}{h})$. The parameter $h$ is called the bandwidth, and controls the degree of smoothing: the larger $h$ is, the more neighbours are used to compute the smooth and the smoother the final curve. Note that because of the form of the triweight kernel, any observation more than $h$ away from $x_j$ will not contribute to the smoothed value.  This allows for efficient computation.
 
-The intution for these methods are simple, we want to weight our estimate at each location not just by the points exactly at that location, but also by nearby points. If we use points within a local neighbourhood, then we get the running mean:
+\begin{itemize}
+  
+  \item a weighted mean,
+  
+  \item a weighted linear regression,
+  
+  \item a robust weighted regression, performed by iteratively fitting regular regeression, reweighting so that observations with high residuals have decreased weights. (Exact details provided in \citep{cleveland:1979})
 
+\end{itemize}
 
-, giving more weight to points that are close than are far away.  
+The weighted mean is fastest to compute but suffers from bias on the boundaries, because the neighbours only lie on one side.  Also as \citep{macaulay:1931} puts it: ``A little thought or experimentation will quickly convince the reader that, so long as we restrict ourselves to positive weights, no moving average, weighted or unweighted, will exactly fit any mathematical curve except a straight line.''  The weighted regression overcomes these problems by effectively using a first-degree Taylor approximation.  Higher-order approximations can be used (by fitting higher order polynomials in the model), but there seems to be little additional benefit in practice \citep{cleveland:1996}.
 
-\[
-  f(y_j) = \sum_{i = 1}^n K( \frac{x_j - x_i}{h} ) y_i 
-\]
+(Note that a smooth histogram is subtly different from a kernel density estimate)
 
-However, a straightforward weighted moving average has two major problems. First, kernel averages are biased on the boundaries, because the data lie only on one side of the estimation point.  Secondly, as \citep{macaulay:1931} puts it: ``A little thought or experimentation will quickly convince the reader that, so long as we restrict ourselves to positive weights, no moving average, weighted or unweighted, will exactly fit any mathematical curve except a straight line.''
+Kernel smoothing is readily extended to higher dimensions. Kernel weighted means are particularly easy to generalise because they are a convolution, and due to the associative nature of convolution it's possible to perform an nD smooth through a sequence of 1d kernel smooths. This is an important optimisation because it converts an $O(n^d)$ process to $O(nd)$.  You can treat local regression in a similar way, although it is only accurate if the grid of x and y values is uncorrelated.  Approximate robust local regression does not work.
 
-To overcome these problem, we move from weighted averages which are locally constant, to weighted linear regression, which is locally linear (a first degree Taylor approximation).  
-
-A similar progression occurs for count data: histogram, ASH, density plot, .
-
-It may seem like we have made the problem more complicated by introducing a number of new tuning parameters: the kernel function, $K$, the degree of the local polynomial, and the bandwidth. Fortunately there is a large body of existing experience to draw on. There is little evidence to suggest that the precise form of the kernel is important (CITE); Gaussian is common, as is the tri-cubic, or Epanechnikov. In practice, there seems to be little additional benefit to locally quadratic (or higher) terms \citep{cleveland:1996}.
-
-Most results about the asymptoptic efficiency of these estimates are based on the raw data. \cite{wand:1994} finds that binning adds insignificant error compared to the raw data .
-
-Small example of difference between histogram, frequency polygon and kernal density estimate.  Description of a limit (this seems like an interesting way to proceed in general, and would be interesting to see a through study of the limiting behaviour of continuous graphics).
-
-
-Smooth = convolution / blurring, and hence can be implemented extremely efficiently if both input and output are on fixed, evenly spaced grids (another reason for the fixed bin restriction). Direct convolution in my timings appeared to be faster than using the FFT, and the code was substantially more complicated (due to the extra padding needed to avoid the period wrapping of the fft).  It may be possible to do this faster by focussing on power of 2 bins, but this was not a bottleneck and I did not optimise further. \citep{wand:1994} suggests there may be more benefit to the FFT in higher-dimensions. There are certainly other performance optimisations available, such as computation on the GPU.
-
+While the fast fourier transformation is a common technique to speed up discrete convolution, it is not effective here.  Using the FFT makes code considerably more complicated (extra padding is needed to avoid the periodic nature of the FFT), and less flexible. Direct convolution with nested loops also makes it easier to predict smoothed values at specified locations, which it useful for cross-validation.
 
 \subsection{``Automatic'' bandwidth selection}
 
-It is common for kernel methods to provide an automatic estimation of the ``best'' bandwidth. We reject that philosophy because like with aspect ratio, there may be multiple ``best'' estimates, each which focusses on different parts of the overall story. Additionally, in a comprehensive study, \cite{loader:1999} found that classical plug-in estimates often performed worst than cross-valiation estimates, and did not perform better. One can also argue, as does \citep{denby:2009}, that the criterion that most papers minimise, integrated mean squared error, is not appopriate for visualisation. Finally, the perceptual costs of under or oversmoothing may not be equal; further research is needed.
+Kernel smoothing introduces a tuning parameter: the bandwidth. There is much research on how to pick the ``best'' bandwidth, but it depends critically on what best means and the specific type of smoothing. Typically, integrated mean squared error is used, which may not correspond with what we actually want for visualisation \citep{denby:2009}. We take a pragmatic attitude and use leave-one-out cross-validation (loocv) \citep{efron:1983} to provide a starting point for the user.
 
-To make it easier to get started, we provide a cross-validation method (\citep{efron:1983}), which estimates error at multiple bandwidths and plots the results.  This makes possible to assess the senstivity of the choice, if there are multiple peaks and ...
+The intution behind loocv is simple: we compare the actual statistic at a location with it's smoothed estimate computed without that observation. We then compute the root mean squared error (rmse) across all observations with $\sqrt{ \sum (y_i - \hat{y}_i)^2 / n}$. If we want a single bandwidth, we can do standard numerical optimisation to find the lowest value, or we can explore graphically over a grid.
 
-Intuitively, it seems like we should be able to do better with an adaptive binwidth: using small bins where there is more data, or where the curve is especially wiggly. However, the full story is more complex because to adapt the bandwidth, we need an estimate of the underlying density, and of the second derivative of the underlying curve, and the additional error in these estimates may swamp the benefit of an adaptive bandwidth. \cite{terrell:1992} found no benefit for density estimation, \citep{fan:1992,brockmann:1993,schucany:1995,herrmann:1997}.
+With the bounded kernel we use, this is straightforward to implement efficiently, in $O(m b)$ where $b$ is the number of bins covered by the kernel.  This is usually much less than $m$. \citep{fan:1994} suggests incremental algorithms that may reduce computation time yet further.
 
-\citep{abramson:1982}
+In our experience, this procedure tends to pick a bandwidth that is too small, preserving features in the data that while may be important, distract from the overall picture.
 
 \subsection{Varying bandwidths}
 
-Nearest neighbour does all we need. 
-
-For the kernel density estimate, \citep{abramson:1982} explored a two-pass procedure varying the bandwidth proportional to the square root of the density, but \cite{terrell:1992} showed that in practice the desired error level is not reached. 
-
+Intuitively, it seems like we should be able to do better with an adaptive binwidth: using small bins where there is more data, or where the curve is especially wiggly. There are many approaches documented in the literature  \citep{terrell:1992, brockmann:1993,schucany:1995,herrmann:1997}.  We follow the simple approach outlined in \citep{fan:1995}: we divide the data into $m / 10 * \log_10(m)$ pieces, estimate the optimal bandwidth for each piece separately, then smooth the estimates and then fit with. 
 
 \section{Visualise}
 \label{sec:visualise}
