@@ -109,7 +109,7 @@ After a review of existing work, Section~\ref{sec:related-work}, much of which o
 
 Section \ref{sec:bin} discusses binning. Fixed width binning is simple, but it's good to understand the drawbacks.
 
-Picking good summaries involves a marriage of computational and statistical  concerns. Computationally, we want linear behaviour and the ability to parallelise, and statistically, we want summarises that are resistant to unusual values. Section~\ref{sec:summarise} discusses these tensions. The computation of binning and summary reduces the data from size $n$ to size $m$, where $m$ is typically 3,000 for 1d summaries and 3,000,000 for 2d summaries.
+Picking good summaries involves a marriage of computational and statistical  concerns. Computationally, we want linear behaviour and the ability to parallelise, and statistically, we want summaries that are resistant to unusual values. Section~\ref{sec:summarise} discusses these tensions. The computation of binning and summary reduces the data from size $n$ to size $m$, where $m$ is typically 3,000 for 1d summaries and 3,000,000 for 2d summaries.
 
 Tension between a flexible system that doesn't restrict the analyst to preconcieved visualisations, but equally has to be constrained to a domain where we can compute efficiently. The system based on binning and smoothing balances this tension well: binning is an extremely simple operation that can be implemented very efficiently; it has deficiencies but these can be compensated for with a smoothing algorithm. Smoothing is statistically efficient, but computationally hard, but smoothing binned data is fast and looses little statistical strength. The statistical literature is particularly important since it helps justifies our approximations, showing that they do not result in untoward loss of information.
 
@@ -149,7 +149,7 @@ The most important type of binning is {\bf fixed width binning}. Fixed width bin
 
 It is easy to see how this works if each dimension has ten bins. For example, to project 3d bin $(5, 0, 4)$ into 1d, we compute $5 + 0 * 10 + 4 * 100 = 4 + 10 * (0 + 10 * 5) = 405$. Given a single integer, we can find the nd bins by reversing the transformation, peeling off the integer remainder after dividing by 10. For example, 1d bin $356$ corresponds to 3d bin $(6, 5, 3)$.
 
-This function turns out to be a monotone minimal perfect hash \citep{belazzougui:2009}, which means highly efficient data structures are avaialble to work with it. Even if this data structure is not used (as in the reference implementation), it easy to efficiently summarise bins in high-dimensions using standard data structures (either a vector if most bins have data in them, or a hash if not).
+This function turns out to be a monotone minimal perfect hash \citep{belazzougui:2009}, which means highly efficient data structures are available to work with it. (A perfect hash eliminates a equality comparison). Even if this data structure is not used (as in the reference implementation), it easy to efficiently summarise bins in high-dimensions using standard data structures (either a vector if most bins have data in them, or a hash if not).
 
 Statistically, there is a small issue with fixed bins: they tend to be too variable in regions of few data points (because the error of summaries is typically proportional to $\sqrt(1/n)$). Ideally, we would vary the width of the bins so that there are more bins where we have more data and fewer bins where we have less data. However evidence from asymptotic analysis is not promising: for the histogram, \cite{kogure:1987} found that fixed bins were globally optimal across all possible variable size algorithms under fairly wide assumptions. The challenge is that as we expand the space of possible binwidths, finding the optima in that space becomes significantly harder. 
 
@@ -160,36 +160,34 @@ Statistically, there is a small issue with fixed bins: they tend to be too varia
 \section{Summarise}
 \label{sec:summarise}
 
-Once each of the $n$ original data points has been labelled with a bin $m$ ($m << n$), the next step is to collapse each $n_m$ points into a fixed number of summary statistics, like the count, mean or standard deviation.
+Once each of the $n$ original data points has been placed into an integer bin $m$ ($m << n$), the next step is to collapse all of the $n_i$ points in each bin into a fixed number of summary statistics, like the count, mean or standard deviation. Summary statistics involve a tension between computational efficiency, robustness and accuracy.
 
-It is useful to consider possible summary statistics in view of \citep{gray:1997}'s classification:
+A back-of-the-envelope calculation gives us a performance target: assuming we want to condense 100 million observations into 10,000 bins in under 5s, we need to be able to compute each summary of 10,000 observations in 0.5 ms, which implies we have no more than 50 ns to process each observation. This is achievable with a high-performance language like C++. In the reference implementation, summarising $10^8$ observations in $10^4$ bins takes $\sim 2.8$s for the mean, $\sim 3$s for the variance, and $\sim 5.8$s the median. \footnote{Timings performed on a 2.6 GHz Intel Core i7, 15\" MacBook retina} \footnote{These are likely to be upper bounds as I have only programmed in C++ for 6 months, and did not use any performance tricks}.  More details are provided in Section~\ref{sub:benchmarks}.
+
+It is useful to consider possible summary statistics in view of the classification of Gray et al. \citep{gray:1997}. A summary is:
 
 \begin{itemize}
-  \item distributive, if the summaries can be computed for each group individually and then combined. Count, sum, min, and max are examples of distributive functions.
+  \item {\bf distributive} if it can be computed using a single element of interim storage, and summaries from subgroups can be combined. This includes count, sum, min, and max.
   
-  \item algebraic, if you can compute the summary exactly if each group returns a fixed number of values. Mean, standard deviation, and topN are all algebraic. But while algebraic, the trivial implementations can have poor numerical properties. (Cite?)
+  \item {\bf algebraic} if it is a combination of a fixed number of distributive statistics. This includes the mean (count + sum), standard deviation (count + sum + sum of squares) and higher moments like skewness and kurtosis.
   
-  \item holistic, if you can't. e.g. median, count distinct, most frequent. For holistic algorithms, algebraic approximations may exist. E.g. for medians, and for count distinct, hyperloglog.  This is an active area of research, particularly important for streaming data since there is no way to hold all data in memory.
+  \item {\bf holistic}, if it requires interim storage that grows with the input data. This includes quantiles (like the median), count of distinct elements or the most common value. 
 
 \end{itemize}
 
-Advantage of algebraic and distributive is that results from subgroups can easily be combined. This has two benefits: firstly, it makes parallelisation trivial, as you can split the data into pieces, summarise each piece and then combine the results. It also supports a hierarchical approach where you first finely bin the data, and then re-bin to answer specific questions. For example, you may have 100 million original observations, which you bin into 100,000 bins; but for any specific 1d plot, you only need at most 5,000 bins (since you are unlikely to have a screen more than 5,000 pixels wide). This hierarchical approach also supports interactive visualisations because it will be considerably faster than going back to the original data each time.
+Algebraic and distributive statistics are important because results from subgroups can easily be combined. This has two benefits: it makes parallelisation trivial, and it supports a tiered approach to exploration. For example, if you have 100 million observations, you might first finely bin into 100,000 bins. Then for any specific 1d plot, you rebin or subset, which is much faster than working with the original data. This tiered approach is particularly useful for interactive visualisations; the fine binning can be done upfront when the visualisation is created, then modifying the binwidth or the plot ranges can be done at interactive speeds.
 
-While the reference implementation is in-memory and single-core, parallelisation and out-of-memory datastores are obvious areas for  future work. We expect that fine pre-binning with simple summaries may be done in existing datastore; the grouping algorithm is trivial to implement in SQL, and most databases already provide simple summary statistics like the mean. Other databases, e.g.\ madlibs (), may provide richer summaries making grouping and summarisating in the database even more appealing. However, databases are is likely to be high-throughput and higher-latency than local computing. This suggests a workflow where we supplement fine prebinning in the database with coarser binning locally, especially when supporting interactive graphics.
+The mean, standard deviation and higher moments can all be computed in a single pass, taking $O(n)$ time and $O(1)$ memory. Some care is needed as naive implementations (e.g.\ computing the variance as $\sum_i^n \frac{x_i^2}{n} - \left( \sum_i^n \frac{x_i}{n} \right)^2$) can suffer from severe numerical problems, but better algorithms are well-known \citep{welford:1962}. The median also takes $O(n)$ time (using the quick-select algorithm), but needs $O(n)$ memory: there is no way to compute the median without storing at least half of the data, and given the median of two subgroups, no way to compute the mean of the full dataset.
 
-The mean, standard deviation and higher moments can all be computed in $O(n)$ time with $O(1)$ memory. And in fact, they can all be computed in a single pass through the data, although care is needed to avoid numerical problems (cite Welford 1962), and multi-pass algorithms are generally more numerical stable. The median also takes $O(n)$ time (using the quick select algorithm), but needs $O(m)$ memory: there is no way to compute the median without storing at least half of the data.
+There is an interesting tension between the mean and the median: the median is much more robust to unusual values than the mean, but requires unbounded memory. A useful way to look at the robustness of a statistic is the {\bf breakdown point}. The breakdown point of a summary is the proportion of observations an attacker needs to control before they can arbitrarily influence the resulting summary. It is 0 for the mean: if you can influence one value, you can force the mean to be any value you like. The breakdown point for the median is 0.5: you have to taint 50\% of the observations before you can arbitrarily change the median. The mean is computationally desirable, but is less statistical desirable since just one arbitrary value can arbitrarily taint the summary.  This is a general tension: the easiest summary statistics to compute are also the least robust, while robust statistics are usually holistic.
 
-To stay with our desired timing, we need to be able to compute each summary for 10,000 observations in $< 5 \mbox{s} / 10,000 = 0.5 \mbox{ms}$, so can not spend more than 50 ns on each observation. This is achievable with a high-performance language like C++; in the reference implementation computing the mean of $10^8$ observations in $10^4$ bins takes $\sim 2.8$s, the variance, $\sim 3$s; and the median, $\sim 5.8$s. \footnote{Timings performed on a 2.6 GHz Intel Core i7, 15\" MacBook retina} \footnote{These are likely to be upper bounds as I have only programmed in C++ for 6 months, and did not use any performance tricks}.  
+It is often possible to convert a summary from holistic to algebraic by taking an approximation. For example, the median can be approximated by the remedian \citep{rousseeuw:1990}, the count of distinct values by the hyperloglog  algorithm \citep{flajolet:2007}, and other quantiles by a variety of methods \citep{finkelstein:1994,hurley:1995,liechty:2003}. Others have proposed general methods for adapting any holistic summary \citep{christmann:2007}. This is an active area of research, and is particularly important for streaming data as there is no way to hold all data in memory.  
 
-There is an interesting tension between the mean and the median: the median is much more robust to unusual values than the mean, but requires unbounded memory. One useful way to look at the robustness of a statistic is the {\bf breakdown point}.  The breakdown point of a summary is the proportion of observations an attacker needs to control before they can arbitrarily influence the resulting summary. It is 0 for the mean: if you can influence one value, you can force the mean to be any value you like. The breakdown point for the median is 0.5: you have to taint 50\% of the observations before you can arbitrarily change the median.  Despite an exhaustive search of the statistics literature, I have not found any robust statistics that are not holistic.
+% Robust alternatives to the standard devation often depend on pairwise distances \citep{rousseeuw:1993}, \citep{croux:1992} 
 
-There is no reason to limit ourselves to only 1d summary functions. 2d summaries like the correlation, or slope of a linear model may also be interesting. Any statistics from a linear model will be $O(n)$ in time and $O(1)$ in space (although again care will be required to compute in a numerically stable fashion), and thus suggest a fruitful ground for generalisations to higher dimensions.  The mean and standard deviation can both be thought of as summaries from a 0-d (intercept only) linear model. Other 2d summaries with a focus on computation speed will also be useful; the summaries of scagnostics \citep{wilkinson:2005} are an obvious starting place.
+Even if you do use robust statistics, you are only protected from scattered outliers, not a radical mismatch between the data and the summary: a mean and sd will never be a good summary if the data has two strong modes. For this reason, visualisation must be iterative - you can not collapse a variable to a summary until you have some confidence that the summary isn't throwing away important information. In practice, practitioners may need to develop their own summary statistics for the pecularities of the data they use; the ones discussed here should provide a good start for general use.
 
-Even if you do use robust statistics, you are only protected from scattered outliers, not a radical mismatch between the data and the summary: a mean and sd will never be a good summary if the data has two strong modes. For this reason, visualisation must be iterative - you can not collapse a variable to a summary until you have some confidence that the summary isn't throwing away important information. In practice, practitioners may need to develop their own summary statistics for the pecularities of the data they use; but the ones discussed here should provide a good start for general use.
-
-\subsection{Benchmarks}
-
-These benchmarks ignore the time needed to load the data into R, which is on the order of 3-5 seconds once it has been serialised in R's binary dataformat.  Unfortunately due to inefficiencies in the implementation of R's data frame strucutre, data frames can not be used to work with very large vectors without substantial performance penalities. Future work will hopefully address some of the deficiencies in R's data model and make it easier to work with large datasets.
+Finally, there is no reason to limit ourselves to only 1d summary functions. 2d summaries like the correlation, or slope of a linear model may also be interesting. All statistics from a linear model can be computed in $O(n)$ in time and $O(1)$ in space \citep{miller:1992}, are and thus suggest a fruitful ground for generalisations to higher dimensions. Other 2d summaries that can be computed quickly will also be useful; scagnostics \citep{wilkinson:2005} are an obvious starting place.
 
 \section{Smooth}
 \label{sec:smooth}
@@ -288,6 +286,11 @@ Rcpp package which provides an easy way to access R's internal datastructures wi
 
 For efficiency, the C++ makes extensive use of generic functions to avoid the cost of virtual method lookup (this is small, but it adds up when working with 100's of millions of observations).  This makes connecting R and C++ somewhat challenging since generic functions are specialised at compile time. To work around this problem, a small code generater generates all specialised versions of template functions using a naming convention, and then in R code the specialised function name is generated dynamically.  This is somewhat inelegant, but unavoidable when coupling programming languages with such different semantics.
 
+\subsection{Benchmarks}
+\label{sub:benchmarks}
+
+These benchmarks ignore the time needed to load the data into R, which is on the order of 3-5 seconds once it has been serialised in R's binary dataformat.  Unfortunately due to inefficiencies in the implementation of R's data frame strucutre, data frames can not be used to work with very large vectors without substantial performance penalities. Future work will hopefully address some of the deficiencies in R's data model and make it easier to work with large datasets.
+
 
 % 
 % \begin{table}
@@ -322,8 +325,12 @@ For efficiency, the C++ makes extensive use of generic functions to avoid the co
  \caption{Sample illustration.}
 \end{figure}
 
-\section{Conclusion}
+\section{Future work}
 \label{sec:conclusion}
+
+While the reference implementation is in-memory and single-core, parallelisation and out-of-memory datastores are obvious areas for future work. We expect that fine pre-binning with simple summaries may be done in existing datastore; the grouping algorithm is trivial to implement in SQL, and most databases already provide simple summary statistics like the mean. Other systems, e.g.\ madlibs \citep{hellerstein:2012}, may provide richer summaries making grouping and summarisating in the database even more appealing. However, databases are is likely to be high-throughput and higher-latency than local computing. This suggests a workflow where we supplement fine prebinning in the database with coarser binning locally, especially when supporting interactive graphics.
+
+Something about column stores: \citep{kersten:2011}
 
 Visualisation is only one piece of the data analysis puzzle: we also need tools for transforming and modelling big data. 
 
