@@ -126,15 +126,14 @@ Section~\ref{sec:conclusion} concludes with directions for future work, discussi
 \section{Related work}
 \label{sec:related-work}
 
-There is an extensive body of statistical research on density estimation (smooth histograms) and smoothing, stretching back to the early 70s. Three good summaries of the work are \cite{scott:1992,bowman:1997,loader:1999a}.    \cite{hardle:1992,wand:1994,fan:1994} focus on the computational side of the smooth estimators, and provide good advice for efficient implementation.  Surprisingly none recognise that simple kernel smoothing is a convolution, and in high-dimensions rearranging the order of the convolution can change the problem from $O(n^d)$ to $O(nd)$. These papers fail to treat some of the problems associated with visualising large data and are not accompanied by code.
+% Related statistics work
+There is an extensive body of statistical research on density estimation (smooth histograms) and smoothing, stretching back to the early 70s. Three good summaries of the work are \cite{scott:1992,bowman:1997,loader:1999a}.    \cite{hardle:1992,wand:1994,fan:1994} focus on the computational side of the smooth estimators, and provide good advice for efficient implementation.  Surprisingly none recognise that simple kernel smoothing is a convolution, and in high-dimensions rearranging the order of the convolution can change the problem from $O(n^d)$ to $O(nd)$. But these papers only treat special cases of this framework, fail to treat some of the problems associated with visualising large data and are not accompanied by code.
 
-\citep{heer:2012} discusses the challenges of visualising large data, and proposes interaction as a solution. Emphasises the challenge of data cleaning and manipulation.
+% Infovis and kde
+\citep{lampe:2011} uses kernel density estimates in an infovis context, but fails to connect their work to existing statistical work. Provide a very fast implementation on the GPU, which presumably could be made even faster if they read previous work. Other techniques from infovis are related to kernel density estimation. Footprint splatting \citep{becker:1997,yang:2003} is exactly equivalent to kernel density estimation. Similarly, using transparency as a way of dealing with overplotting, as in ..., can be seen as a special type of kernel density estimate where the kernel is a uniform radial point.
 
-\citep{lampe:2011} uses kernel density estimates in an infovis context, but fails to connect their work to existing statistical work. Provide a very fast implementation on the GPU, which presumably could be made even faster if they read previous work. Other techniques from infovis are related to kernel density estimation. Footprint splatting \citep{becker:1997,yang:2003} is exactly equivalent to kernel density estimation.  Similarly, using transparency as a way of dealing with overplotting, as in ..., can be seen as a special type of kernel density estimate where the kernel is a uniform radial point.
-
-There are other techniques to deal scatterplots of large data. Hexbin plots \citep{carr:1987} bin 2d data using hexagons to avoid the perceptual issues related to gridding. Generalised scatterplots \citep{keim:2010} use distortion, but no discussion of computational performance.  
-
-Another way to think of this framework is as an extension of product plots \citep{me:prodplots} to continuous data.  
+% Other papers on large data
+There are other techniques to deal scatterplots of large data. Hexbin plots \citep{carr:1987} bin 2d data using hexagons to avoid the perceptual issues related to gridding. Generalised scatterplots \citep{keim:2010} use distortion, but no discussion of computational performance. \citep{heer:2012} discusses the challenges of visualising large data, and proposes interaction as a solution. Emphasises the challenge of data cleaning and manipulation.
 
 \section{Bin}
 \label{sec:bin}
@@ -269,6 +268,8 @@ Rather than drawing a histogram, we draw a frequency polygon \citep{scott:1985a}
 1d: histogram, spinogram
 2d: image plot, contours, density, density + shading tints
 nd: proceed in the same way as productplots
+
+Another way to think of this framework is as an extension of product plots \citep{me:prodplots} to continuous data.  
 
 Draws on insights from product plots. And in someways it can be thought of as an extension to product plots to continuous data; with the constraint that only the final level can been a continuous display; which implies that even if higher levels are continuous they are coarsely binned.
 
