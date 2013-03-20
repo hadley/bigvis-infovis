@@ -14,6 +14,8 @@
 \usepackage{graphicx}
 \usepackage{times}
 \usepackage{natbib}
+\usepackage{booktabs}
+\usepackage{amsmath}
 
 %% This turns references into clickable hyperlinks.
 \usepackage[bookmarks,backref=false,linkcolor=black]{hyperref} %,colorlinks
@@ -236,19 +238,63 @@ Intuitively, it seems like we should be able to do better with an adaptive binwi
 \section{Visualise}
 \label{sec:visualise}
 
-Another design principle (inspired by that of R) is that missing values should never be omitted without user intervention: they should always be preserved along the entire route from raw data to final visualisation. It is possible to remove them, but it must be a deliberate decisions: you never want to inadvertently distort your visualisations by silently leaving off data.
+Relatively straightforward to visualise the resulting data, but we discuss a number of important issues to consider both statistically and visually.  Figure~\ref{fig:vis-types} illustrates the basic types of graphics for 1d and 2d summaries. Visualising counts vs. visualising other summary statistics.  Important to distinguish because all other summaries must be read taking into account how much underlying data there is: you don't want to draw conclusions about areas that have relatively few data points.
 
-Rather than drawing a histogram, we draw a frequency polygon \citep{scott:1985a}, where the centers of each bar are connected with a line.  Asymptotic arguments suggest this has slightly lower error than a histogram.
+Note that for a 1d summary of counts we use a frequency polygon \citep{scott:1985a}, where the centers of each bar are connected with a line. This unifies the display of counts and other summaries; makes it easier to overlay multiple distributions (if summarised by another categorical variable); and asymptotic arguments suggest that it has slightly lower error than a histogram.
 
-1d: histogram, spinogram
-2d: image plot, contours, density, density + shading tints
-nd: proceed in the same way as productplots
+\begin{table}
+  \scriptsize
+  \centering
+  \begin{tabular}{lll}
+  \toprule
+  Dimension & Count & Other summary\\
+  \midrule
+  1d & Frequency polygon & Line plot \\
+  2d & Heatmap, Contour plot, Hypsograph & Heatmap + alpha\\
+  \bottomrule
+  \end{tabular}
+  \caption{Basic visualisation components}
+  \label{fig:vis-types}
+\end{table}
 
-Another way to think of this framework is as an extension of product plots \citep{me:prodplots} to continuous data.  
+On top of these basic plots, we add three suggested design principles for visualisation of large datasets:
 
-Draws on insights from product plots. And in someways it can be thought of as an extension to product plots to continuous data; with the constraint that only the final level can been a continuous display; which implies that even if higher levels are continuous they are coarsely binned.
+\begin{itemize}
+  \item Preserve missing values
+  \item Prepare for outliers
+  \item Display uncertainty
+\end{itemize}
+
+The product plots \citep{me:prodplots} framework provides a way of generalising these plots to higher dimensions, and for integrating with other categorical variables. For count data, we can draw on insights from . Once continuous data has been binned, it can be treated the same way as discrete data and it falls naturally into the framework of product plots. A small additioanl constraint is that only the final level can been a continuous display; which implies that even if higher levels are continuous they are coarsely binned .  It is also interesting to think about the limit of plots as the number of bins goes to infinity.  The product plots framework shows how these ideas can be adapted to display arbitrary dimensions.
 
 \subsection{Missing values}
+
+Another design principle (inspired by that of R) is that missing values should never be omitted without user intervention: they should always be preserved along the entire route from raw data to final visualisation. It is possible to remove them, but it must be a deliberate decisions: you never want to inadvertently distort your visualisations by silently leaving off data.
+
+This principle also needs to be carried through all other components of the framework - missing values must be correctly binned, summarised and smoothed.
+
+\subsection{Missing values}
+
+As the size of data grows, the probability of finding very unusual values also grows. In practice, we have found the visualisation of most large datasets look like Figure~\ref{fig:empty} - most of the data is concentrated in a relatively small error of the plot. We have two tools to deal with this: peeling, when the outliers are spatial; and the modulus transformation, when the outliers are in colour, size or another aesthetic.
+
+\subsubsection{Peeling}
+
+A simple approach to deal with spatial outliers is to remove the smallest outer values. We call this approach peeling, and have implemented it by progressively removing the smallest counts on the convex hull of the dataset.
+
+Typically, you don't want to ignore these unusual values, but instead you partition your analysis to look at the most common and at the unusual. Some small amount of peeling (often $< 1\%$) seems to improve most 2d plots, drawing the focus to the bulk of the data.  For plots of non-count summaries, this also has the additional benefit of reducing outliers in the summary dimension. 
+
+\subsubsection{Modulus transformation}
+
+The modulus transformation \citep{john:1980} is a generalisation of the box-cox transformation \citep{box:1964} to deal with positive and negative data. It provides a flexible tool to shrink or expand the tails of a distribution.
+
+\begin{equation}
+\begin{cases} 
+  \text{sgn}(x) \cdot \log(|x| + 1) & \text{if $\lambda = 0$,} \\
+  \text{sgn}(x) \cdot \frac{(|x| + 1)^\lambda - 1}{\lambda} &\text{if $\lambda \ne 0$.}
+\end{cases}
+\end{equation}
+
+This transformation is particularly useful in conjunction with interactivity, as it allows the use to dynamically focus on important parts of the distribution.
 
 \subsection{Error}
 
@@ -268,33 +314,6 @@ For efficiency, the C++ makes extensive use of generic functions to avoid the co
 
 These benchmarks ignore the time needed to load the data into R, which is on the order of 3-5 seconds once it has been serialised in R's binary dataformat.  Unfortunately due to inefficiencies in the implementation of R's data frame strucutre, data frames can not be used to work with very large vectors without substantial performance penalities. Future work will hopefully address some of the deficiencies in R's data model and make it easier to work with large datasets.
 
-
-% 
-% \begin{table}
-% %% Table captions on top in journal version
-%  \caption{SciVis Paper Acceptance Rate: 1994-2006}
-%  \label{vis_accept}
-%  \scriptsize
-%  \begin{center}
-%    \begin{tabular}{cccc}
-%      Year & Submitted & Accepted & Accepted (\%)\\
-%    \hline
-%      1994 &  91 & 41 & 45.1\\
-%      1995 & 102 & 41 & 40.2\\
-%      1996 & 101 & 43 & 42.6\\
-%      1997 & 117 & 44 & 37.6\\
-%      1998 & 118 & 50 & 42.4\\
-%      1999 & 129 & 47 & 36.4\\
-%      2000 & 151 & 52 & 34.4\\
-%      2001 & 152 & 51 & 33.6\\
-%      2002 & 172 & 58 & 33.7\\
-%      2003 & 192 & 63 & 32.8\\
-%      2004 & 167 & 46 & 27.6\\
-%      2005 & 268 & 88 & 32.8\\
-%      2006 & 228 & 63 & 27.6
-%    \end{tabular}
-%  \end{center}
-% \end{table}
 
 \begin{figure}[htb]
  \centering
