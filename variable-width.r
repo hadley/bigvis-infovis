@@ -1,6 +1,4 @@
-# flesh out dgrid class
 # check (AGAIN) breaks
-# explore optimisation problems when n is small
 
 # library(bigvis)
 load_all("../bigvis")

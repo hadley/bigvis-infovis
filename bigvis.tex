@@ -160,7 +160,7 @@ Statistically, there is a small issue with fixed bins: they tend to be too varia
 \section{Summarise}
 \label{sec:summarise}
 
-Once each of the $n$ original data points has been placed into an integer bin $m$ ($m << n$), the next step is to collapse all of the $n_i$ points in each bin into a fixed number of summary statistics, like the count, mean or standard deviation. Summary statistics involve a tension between computational efficiency, robustness and accuracy.
+Once each of the $n$ original data points has been placed into an integer bin $m$ ($m \ll n$), the next step is to collapse all of the $n_i$ points in each bin into a fixed number of summary statistics, like the count, mean or standard deviation. Summary statistics involve a tension between computational efficiency, robustness and accuracy.
 
 A back-of-the-envelope calculation gives us a performance target: assuming we want to condense 100 million observations into 10,000 bins in under 5s, we need to be able to compute each summary of 10,000 observations in 0.5 ms, which implies we have no more than 50 ns to process each observation. This is achievable with a high-performance language like C++. In the reference implementation, summarising $10^8$ observations in $10^4$ bins takes $\sim 2.8$s for the mean, $\sim 3$s for the variance, and $\sim 5.8$s the median. \footnote{Timings performed on a 2.6 GHz Intel Core i7, 15\" MacBook retina} \footnote{These are likely to be upper bounds as I have only programmed in C++ for 6 months, and did not use any performance tricks}.  More details are provided in Section~\ref{sub:benchmarks}.
 
@@ -205,43 +205,33 @@ Smoothing is an important additional step after summarising because it allows us
 
 \end{itemize}
 
-There are three techniques in our family: kernel means (aka Nadaraya-Watston smoothing), kernel regression (aka local regression) and robust kernel regression (aka loess). These effectively improve upon a simple moving average, and provide a smooth tradeoff of computational performance vs.\ statistical performance. While closely related, these methods developed in different parts of statistics at different times, and the terminology is inconsistent. \citep{cleveland:1996} provides a good historical overview of kernel smoothing methods, and [?] a good overview of density estimation.
+Note that when applied to count summaries, these methods are subtly different from a kernel density estimate. A kernel mean is similar to a kernel density estimate: but a kernel mean divides by (normalises by) by the total weight at each point. This change is most noticeable with small bandwidths: the kernel density estimates will be very large (because they must integrate to 1), and outside the range of the data the estimates will be 0, where outside the range of the data the smoothed counts will be undefined (0/0).
+
+There are three techniques in our family of smoothers: kernel means (aka Nadaraya-Watston smoothing), kernel regression (aka local regression) and robust kernel regression (aka loess). These effectively improve upon a simple moving average, and provide a smooth tradeoff of computational performance vs.\ statistical performance. While closely related, these methods developed in different parts of statistics at different times, and the terminology is inconsistent. \citep{cleveland:1996} provides a good historical overview of kernel smoothing methods.
 
 The intution for these methods are simple, we want to smooth the value at each location by taking into account the neighbouring points. The weight closer points more heavily than distant points we use a {\bf kernel function}. Many kernels are available, but there is little evidence to suggest that the precise form of the kernel is important. Gaussian is common, but we use the triweight, $K(x) = (1 - |x^3|)^2 I_{|x| < 1}$, because it is bounded and simple (evaluation of this function is about 10x faster than evaluation of the Gaussian kernel).  
 
-At each binned location we have $x_i$, the center of the bin, $y_i$ the summary of that bin and $w_i$ the number of observations in that bin. To predict a smooth estimate at position $j$, we first compute the kernel weights for each location $k_i = K(\frac{x_j - x_i}{h})$. The parameter $h$ is called the bandwidth, and controls the degree of smoothing: the larger $h$ is, the more neighbours are used to compute the smooth and the smoother the final curve. Note that because of the form of the triweight kernel, any observation more than $h$ away from $x_j$ will not contribute to the smoothed value.  This allows for efficient computation.
+At each binned location we have $x_i$, the center of the bin, $y_i$ the summary of that bin and $w_i$ the number of observations in that bin. To predict a smooth estimate at position $j$, we first compute the kernel weights for each location $k_i = K(\frac{x_j - x_i}{h})$. The parameter $h$ is called the bandwidth, and controls the degree of smoothing: the larger $h$ is, the more neighbours are used to compute the smooth and the smoother the final curve. Note that because of the form of the triweight kernel, any observation more than $h$ away from $x_j$ will not contribute to the smoothed value.This allows for efficient computation.
 
-\begin{itemize}
-  
-  \item a weighted mean,
-  
-  \item a weighted linear regression,
-  
-  \item a robust weighted regression, performed by iteratively fitting regular regeression, reweighting so that observations with high residuals have decreased weights. (Exact details provided in \citep{cleveland:1979})
+The weighted mean is fastest to compute but suffers from bias on the boundaries, because the neighbours only lie on one side.  Also as \citep{macaulay:1931} puts it: ``A little thought or experimentation will quickly convince the reader that, so long as we restrict ourselves to positive weights, no moving average, weighted or unweighted, will exactly fit any mathematical curve except a straight line.''  The weighted regression overcomes these problems by effectively using a first-degree Taylor approximation.  Higher-order approximations can be used (by fitting higher order polynomials in the model), but there seems to be little additional benefit in practice \citep{cleveland:1996}.  Finally, the robust regression iteratively down-weights the effect of points far away from the curve, and reduces the impact of unusual points at the cost of increased computation time.
 
-\end{itemize}
-
-The weighted mean is fastest to compute but suffers from bias on the boundaries, because the neighbours only lie on one side.  Also as \citep{macaulay:1931} puts it: ``A little thought or experimentation will quickly convince the reader that, so long as we restrict ourselves to positive weights, no moving average, weighted or unweighted, will exactly fit any mathematical curve except a straight line.''  The weighted regression overcomes these problems by effectively using a first-degree Taylor approximation.  Higher-order approximations can be used (by fitting higher order polynomials in the model), but there seems to be little additional benefit in practice \citep{cleveland:1996}.
-
-(Note that a smooth histogram is subtly different from a kernel density estimate)
-
-Kernel smoothing is readily extended to higher dimensions. Kernel weighted means are particularly easy to generalise because they are a convolution, and due to the associative nature of convolution it's possible to perform an nD smooth through a sequence of 1d kernel smooths. This is an important optimisation because it converts an $O(n^d)$ process to $O(nd)$.  You can treat local regression in a similar way, although it is only accurate if the grid of x and y values is uncorrelated.  Approximate robust local regression does not work.
+The three kernel smoothing techniques is readily extended to higher dimensions, using corresponding higher dimensions means and regressions. Optimisations are also available. Kernel weighted means are particularly easy to generalise because they are a convolution, and due to the associative nature of convolution it's possible to perform an nD smooth through a sequence of 1d kernel smooths. This is an important optimisation because it converts an $O(n^d)$ process to $O(nd)$.  You can treat local regression in a similar way, although it is only approximate if the grid of values is not uncorrelated. Approximate robust local regression does not work.
 
 While the fast fourier transformation is a common technique to speed up discrete convolution, it is not effective here.  Using the FFT makes code considerably more complicated (extra padding is needed to avoid the periodic nature of the FFT), and less flexible. Direct convolution with nested loops also makes it easier to predict smoothed values at specified locations, which it useful for cross-validation.
 
 \subsection{``Automatic'' bandwidth selection}
 
-Kernel smoothing introduces a tuning parameter: the bandwidth. There is much research on how to pick the ``best'' bandwidth, but it depends critically on what best means and the specific type of smoothing. Typically, integrated mean squared error is used, which may not correspond with what we actually want for visualisation \citep{denby:2009}. We take a pragmatic attitude and use leave-one-out cross-validation (loocv) \citep{efron:1983} to provide a starting point for the user.
+Kernel smoothing introduces a tuning parameter: the bandwidth. There is much research on how to pick the ``best'' bandwidth, but it depends critically on what best means and the specific type of smoothing. Typically, integrated mean squared error is used, which may not correspond with what we actually want for visualisation \citep{denby:2009}. We take a pragmatic attitude and use leave-one-out cross-validation (loocv) \citep{efron:1983} to provide a starting point for the user.  This is supported by \citep{loader:1999}.
 
-The intution behind loocv is simple: we compare the actual statistic at a location with it's smoothed estimate computed without that observation. We then compute the root mean squared error (rmse) across all observations with $\sqrt{ \sum (y_i - \hat{y}_i)^2 / n}$. If we want a single bandwidth, we can do standard numerical optimisation to find the lowest value, or we can explore graphically over a grid.
+The intution behind loocv is simple: we compare the actual statistic at a location with its smoothed estimate computed without that observation. We then summarise all errors using the root mean squared error (rmse): $\sqrt{ \sum (y_i - \hat{y}_i)^2 / n}$. We can explore this summary across a range of possible grid values, or use standard numerical optimisation (L-BFGS-B \citep{byrd:1995}). While this is a good starting point, and is optimal in the sense of predicting new values, in our experience, this procedure tends to pick a bandwidth that is too small, preserving features in the data that while may be important, distract from the overall picture.
 
-With the bounded kernel we use, this is straightforward to implement efficiently, in $O(m b)$ where $b$ is the number of bins covered by the kernel.  This is usually much less than $m$. \citep{fan:1994} suggests incremental algorithms that may reduce computation time yet further.
-
-In our experience, this procedure tends to pick a bandwidth that is too small, preserving features in the data that while may be important, distract from the overall picture.
+With the bounded kernel we use, this is straightforward to implement efficiently, in $O(m b)$ where $b$ is the number of bins covered by the kernel ($b \ll m$). \citep{fan:1994} suggests incremental algorithms that may reduce computation time still further.
 
 \subsection{Varying bandwidths}
 
-Intuitively, it seems like we should be able to do better with an adaptive binwidth: using small bins where there is more data, or where the curve is especially wiggly. There are many approaches documented in the literature  \citep{terrell:1992, brockmann:1993,schucany:1995,herrmann:1997}.  We follow the simple approach outlined in \citep{fan:1995}: we divide the data into $m / 10 * \log_10(m)$ pieces, estimate the optimal bandwidth for each piece separately, then smooth the estimates and then fit with. 
+Intuitively, it seems like we should be able to do better with an adaptive binwidth: using small bins where there is more data, or where the curve is especially wiggly. There are many approaches documented in the literature  \citep{terrell:1992, brockmann:1993,schucany:1995,herrmann:1997}. We follow the simple, but performant, approach outlined in \citep{fan:1995}: to find a per-location $h$, we divide the data into $m / (10 * \log_{10}(m))$ pieces, estimate the optimal bandwidth for each piece separately, then smooth the estimates.
+
+% Example from Fan paper. 
 
 \section{Visualise}
 \label{sec:visualise}
