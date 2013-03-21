@@ -1,0 +1,1 @@
+s3cmd sync . s3://data.had.co.nz/13-flights/
