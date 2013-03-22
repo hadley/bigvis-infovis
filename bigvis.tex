@@ -84,13 +84,12 @@ We provide a single-core in-memory implementation with the {\tt bigvis} R packag
   {Simulation and Modeling}{Visual Simulation};
 }
 
-%% Uncomment below to include a teaser figure.
 \teaser{
   \centering
   \includegraphics[width=5.33cm]{teaser-1}%
   \includegraphics[width=5.33cm]{teaser-2}%
   \includegraphics[width=5.33cm]{teaser-3}
-  \caption{Refining visualisation of a 76 flight times exploring average delay (colour) as a funtion of distance (x axis) and speed (y axis). (Left) All data, (center) the middle 99.5\% of the data, (right) average delayed transformed to shrink the tails (a modulus trasformation with parameter 0.25). Unsuprisingly, flights with higher than average speeds for their distance (top-right) have shorter delays (red); more interestingly there's a set of shorter slower flights (bottom-left) that have average delays close to 0 (white).}
+  \caption{Refining a visualisation exploring average delay (colour, in minutes) as a funtion of distance (x axis, in miles) and speed (y axis, in mph) for 76 million flights. (Left) All data, (center) focussing on the middle 99.5\% of the data, (right) transforming average delay to shrink the tails and focus on values near 0. Flights with higher than average speeds (top-right) have shorter delays (red); more interestingly, a subset of shorter slower flights (bottom-left) have average delays close to 0 (white).}
 }
 
 
@@ -111,7 +110,6 @@ The framework involves four steps: binning, summarising, smoothing and visualisi
 
 After a review of existing work, Section~\ref{sec:related-work}, much of which occured in the early 90s as statisticians worked to transition their algorithms from mainframes to PCs, the paper explores each component in turn.
 
-
 Section \ref{sec:bin} discusses binning. Fixed width binning is simple, but it's good to understand the drawbacks.
 
 Picking good summaries involves a marriage of computational and statistical  concerns. Computationally, we want linear behaviour and the ability to parallelise, and statistically, we want summaries that are resistant to unusual values. Section~\ref{sec:summarise} discusses these tensions. The computation of binning and summary reduces the data from size $n$ to size $m$, where $m$ is typically 3,000 for 1d summaries and 3,000,000 for 2d summaries.
@@ -124,11 +122,11 @@ Even once we've reduced the data to manageable size, visualisation of large data
 
 Section~\ref{sec:bigvis} discusses the open-source reference implementation that accompanies this paper. The R \citep{R} bigvis package, available from \url{http://github.com/hadley/bigvis}, uses a C++ for high-performance component and R for a user friendly CLI front end.  Additionally, the code to reproduce this paper and accompanying figures can be found at \url{http://github.com/hadley/bigvis}.
 
-The reference implementation provides some of the constraints that guide this paper. It is designed to be used by experienced analysts who will be using  sophisticated statistical and machine learning models in conjunction with visualisation.  It allows the analyst to create plots of 100,000,000 observations in under 5s. $10^8$ doubles occupy slighty under 800 Mb of memory, so about 20 vectors can be stored in 16 Gb of ram, with about 1 Gb left over. Support tiered model of data access: analyst may have access to billions or trillion of observation in a multi-machine data warehouse, but for most problems some interactive exploration is needed on a small subset or aggregate. 5s is an interactive timeframe for a REPL.  This is arbitrary but is currently about how long it takes to draw a scatterplot of 200,000. It's well above the threshold for direct manipulative interaction, but my personal experience seems to be on the order of what I expect when doing interactive data analysis in R.  Too much longer and I start chcking my email and my productivity goes down hill.
+The reference implementation provides some of the constraints that guide this paper. It is designed to be used by experienced analysts who will be using  sophisticated statistical and machine learning models in conjunction with visualisation.  It allows the analyst to create plots of $10^8$ observations in under 5s. $10^8$ doubles occupy a little less than 800 Mb, so about 20 vectors can be stored in 16 Gb of ram, with about 1 Gb left over. Support tiered model of data access: analyst may have access to billions or trillion of observation in a multi-machine data warehouse, but for most problems some interactive exploration is needed on a small subset or aggregate. 5s is an interactive timeframe for a REPL.  This is arbitrary but is currently about how long it takes to draw a scatterplot of 200,000. It's well above the threshold for direct manipulative interaction, but my personal experience seems to be on the order of what I expect when doing interactive data analysis in R.  Too much longer and I start checking my email and my productivity goes down hill.
 
 Section~\ref{sec:conclusion} concludes with directions for future work, discussing how this framework extends naturally to multi-core, out-of-memory data, and how it could be adapted for the interactive analysis of large data.
 
-To illustrate these techniques will we use flight on-time performance made available by the Research and Innovation Technology Administration of the Bureau of Transporation Statistics\footnote{\url{http://www.transtats.bts.gov/Fields.asp?Table_ID=236}}. We aggregated flight performance data for all domestic US flights from 2000-2011, 78\,271\,140 flights in total. The complete dataset has 111 variables, but here we'll focus on 4: the distance of the flight (miles), the elapsed flight time (in minutes), the average speed (in mph) and the arrival delay (in minutes). Approximately 1.7 million (2.2\%) of the times were negative: these were replaced with missing values.
+To illustrate these techniques will we use flight on-time performance made available by the Research and Innovation Technology Administration of the Bureau of Transporation Statistics\footnote{\url{http://www.transtats.bts.gov/Fields.asp?Table_ID=236}}. We aggregated flight performance data for all domestic US flights from 2000-2011, $\sim$ 78\,000\,000 flights in total. The complete dataset has 111 variables, but here we'll focus on 4: the distance of the flight (miles), the elapsed flight time (in minutes), the average speed (in mph) and the arrival delay (in minutes). Approximately 1.7 million (2.2\%) of the times were negative: these were replaced with missing values.
 
 \section{Related work}
 \label{sec:related-work}
@@ -308,16 +306,16 @@ Vital that these displays
 \section{The {\tt bigvis} package}
 \label{sec:bigvis}
 
-A reference implementation of these ideas is provided in the .  The \url{http://github.com/hadley/bigvis} and the sources for the figures in this paper (including all data) can be found at a \url{http://github.com/hadley/bigvis-infovis}
+The bigvis package demonstrates the ideas discussed in this paper in an open-source R package available from \url{http://github.com/hadley/bigvis}. It has two main parts: a high-performance implementation of the key algorithms written in C++ and a flexible, user-friendly wrapper that supports exploratory data analysis written in R. The key to bridging the two pieces is the Rcpp package \citep{eddelbuettel:2011} which provides an easy way to access R's internal datastructures with a clean C++ API. 
 
-Rcpp package which provides an easy way to access R's internal datastructures with a clean C++ API.  C++ is extremely efficient and the data structures and algorithms provided by the STL make programming considerably faster.  The C++ code is by no means expert and uses only a smattering of advanced C++ functions; I have been programming in C++ for less than six months. There are likely to be considerable opportunities for further optimisation.
+The C++ component makes use of templated functions to avoid the cost of virtual method lookup (this is small, but adds up with potentially 100's of millions of invocations). This adds an additional challenge when connecting R and C++ because templated functions are specialised at compile time, but the R code needs to call them dynamically at run-time. To work around this problem, a small code generater generates all specialised versions of templated functions. This is somewhat inelegant, but unavoidable when coupling programming languages with such different semantics.
 
-For efficiency, the C++ makes extensive use of generic functions to avoid the cost of virtual method lookup (this is small, but it adds up when working with 100's of millions of observations).  This makes connecting R and C++ somewhat challenging since generic functions are specialised at compile time. To work around this problem, a small code generater generates all specialised versions of template functions using a naming convention, and then in R code the specialised function name is generated dynamically.  This is somewhat inelegant, but unavoidable when coupling programming languages with such different semantics.
-
-Integrated with ggplot2: provides autoplot function that gives plot with reasonable defaults, otherwise can create custom plots with the full power of ggplot2 \citep{me:ggplot2,wickham:2007d}.
+The bigvis {\sc api} is designed to make visualisation large datasets familiar to R users. It implements methods of the {\tt autoplot} generic providing default visualisations designed using the principles above, and also cleanly interfaces with other plotting tools in R, like ggplot2 \citep{me:ggplot2,wickham:2007d}, which makes it easy to build custom graphics based on the condensed and smoothed data.
 
 \subsection{Benchmarks}
 \label{sub:benchmarks}
+
+C++ is extremely efficient and the data structures and algorithms provided by the STL make programming considerably faster.  The C++ code is by no means expert and uses only a smattering of advanced C++ functions; I have been programming in C++ for less than six months. There are likely to be considerable opportunities for further optimisation.
 
 These benchmarks ignore the time needed to load the data into R, which is on the order of 3-5 seconds once it has been serialised in R's binary dataformat.  Unfortunately due to inefficiencies in the implementation of R's data frame strucutre, data frames can not be used to work with very large vectors without substantial performance penalities. Future work will hopefully address some of the deficiencies in R's data model and make it easier to work with large datasets.
 
