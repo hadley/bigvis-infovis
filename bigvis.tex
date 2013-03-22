@@ -12,6 +12,7 @@
 
 \usepackage{mathptmx}
 \usepackage{graphicx}
+\graphicspath{{./images/}}
 \usepackage{times}
 \usepackage{natbib}
 \usepackage{booktabs}
@@ -84,11 +85,13 @@ We provide a single-core in-memory implementation with the {\tt bigvis} R packag
 }
 
 %% Uncomment below to include a teaser figure.
-%%  \teaser{
-%%    \centering
-%%    \includegraphics[width=16cm]{CypressView}
-%%    \caption{In the Clouds: Vancouver from Cypress Mountain.}
-%%  }
+\teaser{
+  \centering
+  \includegraphics[width=5.33cm]{teaser-1}%
+  \includegraphics[width=5.33cm]{teaser-2}%
+  \includegraphics[width=5.33cm]{teaser-3}
+  \caption{Refining visualisation of a 76 flight times exploring average delay (colour) as a funtion of distance (x axis) and speed (y axis). (Left) All data, (center) the middle 99.5\% of the data, (right) average delayed transformed to shrink the tails (a modulus trasformation with parameter 0.25). Unsuprisingly, flights with higher than average speeds for their distance (top-right) have shorter delays (red); more interestingly there's a set of shorter slower flights (bottom-left) that have average delays close to 0 (white).}
+}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
