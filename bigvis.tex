@@ -27,10 +27,10 @@
   pdftitle = {},
   pdfsubject = {},
   pdfkeywords = {},
-  colorlinks=true,
-  linkcolor= black,
-  citecolor= black,
-  pageanchor=true,
+  colorlinks = true,
+  linkcolor = black,
+  citecolor = black,
+  pageanchor = true,
   urlcolor = black,
   plainpages = false,
   linktocpage
@@ -89,7 +89,7 @@ The paper is accompanied by single-core in-memory reference implementation that 
   \includegraphics[width=5.33cm]{teaser-1}%
   \includegraphics[width=5.33cm]{teaser-2}%
   \includegraphics[width=5.33cm]{teaser-3}
-  \caption{Refining a visualisation exploring average delay (colour, in minutes) as a funtion of distance (x axis, in miles) and speed (y axis, in mph) for 76 million flights. (Left) All data, (center) focussing on the middle 99.5\% of the data, (right) transforming average delay to shrink the tails and focus on values near 0. Flights with higher than average speeds (top-right) have shorter delays (red); more interestingly, a subset of shorter slower flights (bottom-left) have average delays close to 0 (white).}
+  \caption{Average delay (colour, in minutes) as a funtion of distance (x axis, in miles) and speed (y axis, in mph) for 76 million flights. The visualisation needs refinement to be useful: (Left) all data, (center) focussing on the middle 99.5\% of the data, (right) transforming average delay to shrink the tails and focus on values near 0. Flights with higher than average speeds (top-right) have shorter delays (red); more interestingly, a subset of shorter, slower flights (bottom-left) have average delays close to 0 (white).}
   \label{fig:teaser}
 }
 
@@ -103,43 +103,35 @@ The paper is accompanied by single-core in-memory reference implementation that 
 
 \maketitle
 
-As data grows ever larger, it is important that our ability to visualise it grows too. This paper presents a novel framework for visualising large data that is designed to be both computationally and statistically efficient, dealing with both the challenges of what to display for very large datasets and how to display it fast enough for interactive exploration.
+As data grows ever larger, it is important that our ability to visualise it grows too. This paper presents a novel framework for visualising large data that is designed to be both computationally and statistically efficient, dealing with both the challenges of what to display for very large datasets and how to display it fast enough for interactive exploration. The insight that underlies this work is simple: the bottleneck when visualising large datasets is the number of pixels on a screen. At most we have around 3,000,000 pixels to use, and 1d summaries need only 3,000 pixels. There is no point displaying more data than pixels, and rathering than relying on the rendering engine to intelligently reduce the data, we develop summaries built on well-known statistical principles. 
 
-The insight that underlies this work is simple: the bottleneck for visualising large datasets is the number of pixels on a screen. For 1d dimensional summaries, we need on the order of 3,000 pixels; for 2d summaries, we need 3,000,000 pixels. There is no point displaying more data than that, and rathering than relying on the graphics rendering engine subsystem to reduce the data, we develop summaries built on well-known statistical principles. Interaction adds another dimension (time). While interaction is not the main focus of this paper, I will show how the framework does support interactive environments.
+The framework includes the most important 1d and 2d statistical graphics: histograms, frequency polygons and kernel density estimates for 1d data; scatterplots, scatterplot smoothers and boxplots. 
 
-The framework involves four steps: binning, summarising, smoothing and visualising. This captures the most important 1d and 2d plots for statistical data: histograms and frequency polygons, kernel density estimates, local regression, loess \citep{cleveland:1979}, boxplots, and smoothed quantile regression \citep{koenker:2005}. It is also readly extensible to new visualisations that instead focus on higher moments (like standard deviation, skewness and kurtosis) instead of the mean or median.
+It is readily extensible to new visualisations that instead focus on higher moments (like standard deviation, skewness and kurtosis) instead of the mean or median.
 
-After a review of existing work, Section~\ref{sec:related-work}, much of which occured in the early 90s as statisticians worked to transition their algorithms from mainframes to PCs, the paper explores each component in turn.
+The framework attempts to address the tension between a providing flexible system that can that doesn't restrict the analyst to preconcieved visualisations, but equally is constrained to a domain where computation can be performed efficiently. 
 
-Section \ref{sec:bin} discusses binning. Fixed width binning is simple, but it's good to understand the drawbacks.
+The framework involves four steps: binning, summarising, smoothing and visualising. Binning and summarising condenses the large raw data to a summary on the same order of size as pixels on the screen. To be computational efficient, binning and summarising make some statistical sacrifices, but but these can be compensated for with the smoothing step. Smoothing is computationally harder, but smoothing condensed data is fast and looses little statistical strength. 
 
-Picking good summaries involves a marriage of computational and statistical  concerns. Computationally, we want linear behaviour and the ability to parallelise, and statistically, we want summaries that are resistant to unusual values. Section~\ref{sec:summarise} discusses these tensions. The computation of binning and summary reduces the data from size $n$ to size $m$, where $m$ is typically 3,000 for 1d summaries and 3,000,000 for 2d summaries.
+Section \ref{sec:condense} discusses binning and summarising, focussing on the computational concerns. Computationally, we want linear behaviour and the ability to parallelise, but statistically, we want summaries that are resistant to unusual values. Section~\ref{sec:smooth} discusses smoothing, focussing more on the statistical side, and shows how we can remedy some of the statistical problems with the fast binning and summary steps. Even once we've reduced the data to manageable size, visualisation of large data presents some special challenges. In Section~\ref{sec:visualise}, we discuss generally how to visualise the condensed datasets, and some of the particular problems with very large data, notably problems caused ``unusual'' values.  
 
-Tension between a flexible system that doesn't restrict the analyst to preconcieved visualisations, but equally has to be constrained to a domain where we can compute efficiently. The system based on binning and smoothing balances this tension well: binning is an extremely simple operation that can be implemented very efficiently; it has deficiencies but these can be compensated for with a smoothing algorithm. Smoothing is statistically efficient, but computationally hard, but smoothing binned data is fast and looses little statistical strength. The statistical literature is particularly important since it helps justifies our approximations, showing that they do not result in untoward loss of information.
+The paper is accompanied by an open-source reference implementation in the form of the bigvis R \citep{R} package. This is available from \url{http://github.com/hadley/bigvis} and is described in Section~\ref{sec:bigvis}. While the reference implementation focusses on in-memory, single-core summaries of continuous data with an eye to produce static graphics, these are not limitations of the framework, and while not the focus of the paper, I will also mention issues with out-of-memory data, parallel multi-core processing and interactive visualisations. 
 
-Smoothing, as discussed in Section~\ref{sec:smooth} is a critical part of this framework because it makes it possible to remedy some of the statistical problems with the simple, but fast, binning and summary steps. Because the smoothing occurs on the condensed data, the approach can be computationally much more expensive. This section summarises and unifies the existing extensive statistical work in this area.
-
-Even once we've reduced the data to manageable size, visualisation of large data presents some special challenges. In Section~\ref{sec:visualise}, we discuss generally how to visualise the condensed datasets, and some of the particular problems with very large data, notably problems caused ``unusual'' values.  Focus on the most important 1d and 2d statistical graphics: the histogram and the scatterplot.
-
-Section~\ref{sec:bigvis} discusses the open-source reference implementation that accompanies this paper. The R \citep{R} bigvis package, available from \url{http://github.com/hadley/bigvis}, uses a C++ for high-performance component and R for a user friendly CLI front end.  Additionally, the code to reproduce this paper and accompanying figures can be found at \url{http://github.com/hadley/bigvis}.
-
-The reference implementation provides some of the constraints that guide this paper. It is designed to be used by experienced analysts who will be using  sophisticated statistical and machine learning models in conjunction with visualisation.  It allows the analyst to create plots of $10^8$ observations in under 5s. $10^8$ doubles occupy a little less than 800 Mb, so about 20 vectors can be stored in 16 Gb of ram, with about 1 Gb left over. Support tiered model of data access: analyst may have access to billions or trillion of observation in a multi-machine data warehouse, but for most problems some interactive exploration is needed on a small subset or aggregate. 5s is an interactive timeframe for a REPL.  This is arbitrary but is currently about how long it takes to draw a scatterplot of 200,000. It's well above the threshold for direct manipulative interaction, but my personal experience seems to be on the order of what I expect when doing interactive data analysis in R.  Too much longer and I start checking my email and my productivity goes down hill.
-
-Section~\ref{sec:conclusion} concludes with directions for future work, discussing how this framework extends naturally to multi-core, out-of-memory data, and how it could be adapted for the interactive analysis of large data.
-
-To illustrate these techniques will we use flight on-time performance made available by the Research and Innovation Technology Administration of the Bureau of Transporation Statistics \footnote{\url{http://transtats.bts.gov/Fields.asp?Table_ID=236}}. We aggregated flight performance data for all domestic US flights from 2000-2011, $\sim$ 78\,000\,000 flights in total. The complete dataset has 111 variables, but here we'll focus on 4: the distance of the flight (miles), the elapsed flight time (in minutes), the average speed (in mph) and the arrival delay (in minutes). The data was mildly cleaned: negative times, speeds greater 761 mph (the speed of sound), and distances greater than 2724 miles (longest flight in the continental US, SEA-MIA) Approximately 1.7 million (2.2\%) of the times were negative: these were replaced with missing values.
+To illustrate the framework I include figures generated from the flight on-time performance data made available by the Bureau of Transporation Statistics\footnote{\url{http://transtats.bts.gov/Fields.asp?Table_ID=236}}. I use flight performance data for all domestic US flights 2000--2011: $\sim$78,000,000 flights in total. The complete dataset has 111 variables, but here we'll explore just four: the flight distance (in miles), elapsed time (in minutes), average speed (in mph) and the arrival delay (in minutes). The data was mildly cleaned: negative times, speeds greater 761 mph (the speed of sound), and distances greater than 2724 miles (the longest flight in the continental US, {\sc sea}--{\sc mia}) were replaced with missing values. This affected $\sim$1.8 million (2.4\%) rows. The data, and code, needed to reproduce this paper and accompanying figures can be found at \url{http://github.com/hadley/bigvis}.
 
 \section{Related work}
 \label{sec:related-work}
 
 % Related statistics work
-There is an extensive body of statistical research on density estimation (smooth histograms) and smoothing, stretching back to the early 70s. Three good summaries of the work are \cite{scott:1992,bowman:1997,loader:1999a}.    \cite{hardle:1992,wand:1994,fan:1994} focus on the computational side of the smooth estimators, and provide good advice for efficient implementation.  Surprisingly none recognise that simple kernel smoothing is a convolution, and in high-dimensions rearranging the order of the convolution can change the problem from $O(n^d)$ to $O(nd)$. But these papers only treat special cases of this framework, fail to treat some of the problems associated with visualising large data and are not accompanied by code.
+There is an extensive body of statistical research on density estimation (smooth histograms) and smoothing, stretching back to the early 70s. Three good summaries of the work are \cite{scott:1992,bowman:1997,loader:1999a}.    \cite{hardle:1992,wand:1994,fan:1994} focus on the computational side of the smooth estimators, much of which occured in the early 90s as statisticians worked to transition their algorithms from mainframes to PCs.  Surprisingly none recognise that simple kernel smoothing is a convolution, and in high-dimensions rearranging the order of the convolution can change the problem from $O(n^d)$ to $O(nd)$. But these papers only treat special cases of this framework, fail to treat some of the problems associated with visualising large data and are not accompanied by code.
 
 % Infovis and kde
 \citep{lampe:2011} uses kernel density estimates in an infovis context, but fails to connect their work to existing statistical work. Provide a very fast implementation on the GPU, which presumably could be made even faster if they read previous work. Other techniques from infovis are related to kernel density estimation. Footprint splatting \citep{becker:1997,yang:2003} is exactly equivalent to kernel density estimation. Similarly, using transparency as a way of dealing with overplotting, as in ..., can be seen as a special type of kernel density estimate where the kernel is a uniform radial point.
 
 % Other papers on large data
 There are other techniques to deal scatterplots of large data. Hexbin plots \citep{carr:1987} bin 2d data using hexagons to avoid the perceptual issues related to gridding. Generalised scatterplots \citep{keim:2010} use distortion, but no discussion of computational performance. \citep{heer:2012} discusses the challenges of visualising large data, and proposes interaction as a solution. Emphasises the challenge of data cleaning and manipulation.
+
+\citep{unwin:2006} aggregates much work from statistical graphics.
 
 \section{Bin}
 \label{sec:bin}
@@ -335,6 +327,8 @@ The C++ component makes use of templated functions to avoid the cost of virtual 
 
 The bigvis {\sc api} is designed to make visualisation large datasets familiar to R users. It implements methods of the {\tt autoplot} generic providing default visualisations designed using the principles above, and also cleanly interfaces with other plotting tools in R, like ggplot2 \citep{me:ggplot2,wickham:2007d}, which makes it easy to build custom graphics based on the condensed and smoothed data.
 
+The reference implementation provides some of the constraints that guide this paper. It is designed to be used by experienced analysts who will be using  sophisticated statistical and machine learning models in conjunction with visualisation.  It allows the analyst to create plots of $10^8$ observations in under 5s. $10^8$ doubles occupy a little less than 800 Mb, so about 20 vectors can be stored in 16 Gb of ram, with about 1 Gb left over. Support tiered model of data access: analyst may have access to billions or trillion of observation in a multi-machine data warehouse, but for most problems some interactive exploration is needed on a small subset or aggregate. 5s is an interactive timeframe for a REPL.  This is arbitrary but is currently about how long it takes to draw a scatterplot of 200,000. It's well above the threshold for direct manipulative interaction, but my personal experience seems to be on the order of what I expect when doing interactive data analysis in R.  Too much longer and I start checking my email and my productivity goes down hill.
+
 \subsection{Benchmarks}
 \label{sub:benchmarks}
 
@@ -355,6 +349,8 @@ These benchmarks ignore the time needed to load the data into R, which is on the
 While the reference implementation is in-memory and single-core, parallelisation and out-of-memory datastores are obvious areas for future work. We expect that fine pre-binning with simple summaries may be done in existing datastore; the grouping algorithm is trivial to implement in SQL, and most databases already provide simple summary statistics like the mean. Other systems, e.g.\ madlibs \citep{hellerstein:2012}, may provide richer summaries making grouping and summarisating in the database even more appealing. However, databases are is likely to be high-throughput and higher-latency than local computing. This suggests a workflow where we supplement fine prebinning in the database with coarser binning locally, especially when supporting interactive graphics.
 
 Something about column stores: \citep{kersten:2011}
+
+Categorical data: prebinned, and can't be be smoothed.
 
 Visualisation is only one piece of the data analysis puzzle: we also need tools for transforming and modelling big data. 
 
