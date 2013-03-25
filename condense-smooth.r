@@ -2,6 +2,7 @@ library(bigvis)
 library(ggplot2)
 library(grid)
 library(reshape2)
+library(scales)
 source("1-load.r")
 
 tweak <- list(
@@ -52,3 +53,34 @@ qplot(dist, value, data = smooth, geom = "line") +
   facet_grid(summary ~ ., scales = "free_y") +
   tweak
 ggsave("images/smooth.pdf", width = 8, height = 7)
+
+# 2d ----------------
+
+ds <- condense(bin(dist, 50), bin(speed, 20))
+
+mt_trans <- function(lambda) {
+  trans_new("modulo",
+    function(x) mt(x, lambda),
+    function(x) inv_mt(x, lambda)
+  )
+}
+
+
+ggplot(ds, aes(dist, speed, fill = .count)) +
+  geom_raster() +
+  scale_fill_gradient("Count\n(x 1000)", low = "grey90", high = "black",
+    breaks = c(1, 2, 3, 5, 10) * 1e5,
+    labels = c("100", "200", "300", "500", "1000"),
+    trans = mt_trans(0.5), guide = guide_colorbar(
+      title.vjust = 0.75, barwidth = unit(5, "inches")
+    )
+  ) +
+  scale_x_continuous("Distance (miles)",
+    breaks = c(500, 1000, 1500, 2000, 2500)) +
+  ylab("Speed (mph)") +
+  theme(
+    plot.margin = unit(c(0, 0, 0, 0), "lines"),
+    text = element_text(size = 18),
+    legend.position = "bottom"
+  )
+ggsave("images/condense-2d.pdf", width = 8, height = 6)

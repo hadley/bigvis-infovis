@@ -17,6 +17,7 @@
 \usepackage{natbib}
 \usepackage{booktabs}
 \usepackage{amsmath}
+\usepackage{mathtools}
 
 \raggedbottom
 
@@ -133,9 +134,11 @@ There are other techniques to deal scatterplots of large data. Hexbin plots \cit
 
 \citep{unwin:2006} aggregates much work from statistical graphics.
 
-\section{Bin}
-\label{sec:bin}
 
+\section{Condense}
+\label{sec:condense}
+
+The first step is to condensed the large original dataset to binned summaries which we will later visualise. Figure~\ref{fig:condense} illustrates the principle with distance summarising each bin with the number of observations in that bin, and the mean and standard deviation of distance. To do this we need to first assign each observation to a bin, as described in Section~\ref{sub:bin}; then summarise all observations in a bin with a handful of summary statistics, as described in Section~\ref{sub:summarise}.
 
 \begin{figure}[htb]
  \centering
@@ -144,56 +147,84 @@ There are other techniques to deal scatterplots of large data. Hexbin plots \cit
  \label{fig:condense}
 \end{figure}
 
-The first stage of the process is to condense the data, reducing millions of data points to approximately one summary per pixel available on the screen.  To do this we must first determine how to group the data into bins; in other words, we need to assign each data point to an integer. We want an injective mapping, so that many data points will be mapped to a single integer; this is the chief means by which this framework deals with large data. Important to think of this as a separate step, because it may often be performed outside of the visualisation environment, for example in the database layer. 
 
-The most important type of binning is {\bf fixed width binning}. Fixed width binning is parameterised by two variables, the origin and the width, and can be computed extremely efficiently using $\left \lfloor (x - origin) / width \right \rfloor $. Fixed width binning is extremely computationally efficient, easily extended from 1d to nd, and while statistically na\"ive, there is little evidence that variable binwidths do better.
+\subsection{Bin}
+\label{sub:bin}
 
-1d binning is easily extensible to multiple dimensions. We first bin each dimension, giving a vector of integers, $(x_1, x_2, ..., x_m)$. It is simple to devise a bijective map between a vector of integers and a single integer if we know the highest bin in each dimension. If we have $m$ dimensions, each taking possible values $0, 1, \ldots, n_m$, then we can collapse the vector of integers into a single integer using this formula:
+To do this we must first determine how to group the data into bins; in other words, we need to assign each data point to an integer. We want an injective mapping, so that many data points will be mapped to a single integer; this is the chief means by which this framework deals with large data. It is important to think of this as a separate step, as it may be performed outside of the visualisation environment, for example in the database layer (integers take up half the space of doubles, so this could half data transmission costs). The most important type of binning is {\bf fixed width binning}. Fixed width binning is extremely computationally efficient, easily extended from 1d to nd, and while statistically na\"ive, there is little evidence that variable binwidths do better. 
 
-\[ x_1 + x_2 \cdot n_1 + x_3 \cdot n_1 \cdot n_2 + \cdots + x_m * \Pi^{n-1}_{i = 1} n_i = \]
-\[ x_1 + n_1 \cdot (x_2 + n_2 \cdot (x_3 + \cdots(x_m)) \]
+\subsubsection{Computation}
 
-It is easy to see how this works if each dimension has ten bins. For example, to project 3d bin $(5, 0, 4)$ into 1d, we compute $5 + 0 * 10 + 4 * 100 = 4 + 10 * (0 + 10 * 5) = 405$. Given a single integer, we can find the nd bins by reversing the transformation, peeling off the integer remainder after dividing by 10. For example, 1d bin $356$ corresponds to 3d bin $(6, 5, 3)$.
+Fixed width binning is parameterised by two variables, the origin (the position of the first bin) and the width. The computation is shown in \eqref{eq:fixed-width}.
 
-This function turns out to be a monotone minimal perfect hash \citep{belazzougui:2009}, which means highly efficient data structures are available to work with it. (A perfect hash eliminates a equality comparison). Even if this data structure is not used (as in the reference implementation), it easy to efficiently summarise bins in high-dimensions using standard data structures (either a vector if most bins have data in them, or a hash if not).
+\begin{equation}
+  \label{eq:fixed-width}
+  \left \lfloor \frac{x - \text{origin}}{\text{width}} \right \rfloor + 1
+\end{equation}
 
-Statistically, there is a small issue with fixed bins: they tend to be too variable in regions of few data points (because the error of summaries is typically proportional to $\sqrt(1/n)$). Ideally, we would vary the width of the bins so that there are more bins where we have more data and fewer bins where we have less data. However evidence from asymptotic analysis is not promising: for the histogram, \cite{kogure:1987} found that fixed bins were globally optimal across all possible variable size algorithms under fairly wide assumptions. The challenge is that as we expand the space of possible binwidths, finding the optima in that space becomes significantly harder. 
+Bins are 1-indexed, reserving bin 0 for missing values and values smaller than the origin.
+
+\subsubsection{Extension to nd}
+
+Fixed width binning is easily extensible to multiple dimensions. You first bin each dimension, producing a vector of integers $(x_1, x_2, ..., x_m)$. It is then straightforward to devise a bijective map between this vector and a single integer, given that we know the largest bin in each dimension: If we have $m$ dimensions, each taking possible values $0, 1, \ldots, n_m$, then we can collapse the vector of integers into a single integer using this formula:
+
+\begin{equation}
+  \label{eq:nd-bins}
+  \begin{matrix*}[l]
+   = & x_1 + x_2 \cdot n_1 + x_3 \cdot n_1 \cdot n_2 + \cdots + x_m * \Pi^{n-1}_{i = 1} n_i \\
+   = & x_1 + n_1 \cdot (x_2 + n_2 \cdot (x_3 + \cdots(x_m))
+  \end{matrix*}
+\end{equation}
+
+It is easy to see how this works if each dimension has ten bins. For example, to project 3d bin $(5, 0, 4)$ into 1d, we compute $5 + 0 * 10 + 4 * 100 = 4 + 10 * (0 + 10 * 5) = 405$. Given a single integer, we can find the vector of $m$ original bins by reversing the transformation, peeling off the integer remainder after dividing by 10. For example, 1d bin $356$ corresponds to 3d bin $(6, 5, 3)$.
+
+This function is a monotone minimal perfect hash, and highly efficient hashmap variants are available that make use of its special properties \citep{belazzougui:2009}. For example, because the hash is perfect, we can eliminate the equivality comparison that is usually needed after a candidate has been found with the hashed value. Even if this data structure is not used (as in the reference implementation), it easy to efficiently summarise bins in high-dimensions using standard data structures (either a vector if most bins have data in them, or a hashmap if not).
+
+The challenges of working with nd summaries are typically perceptual, rather than computation. Figure~\ref{fig:condense-2d} shows a 2d summary of distance and speed: even moving from 1d to 2d makes it significantly harder to accurately percieve count \citep{cleveland:1984}.
+
+\begin{figure}[htb]
+ \centering
+ \includegraphics[width=\linewidth]{condense-2d}
+ \caption{Distance and speed summarised with count.  Note that counts have been transformed slightly as described in Section~\ref{sub:transform} to draw attention to regions of lower density}
+ \label{fig:condense-2d}
+\end{figure}
+
+
+\subsubsection{Statistical limitations}
+
+Ideally, we would like bigger bins in regions with few data points because the error of the summary is typically $\Theta(1 / \sqrt{n})$. For example, in Figure~\ref{fig:condense} we would like to have bigger bins for larger distances since the counts are small and the estimates of mean and standard deviation are more variable than we would like. However, there is little evidence that varying binwidths leads to asymptotically lower error \citep{terrell:1992}; while varying bin widths could provide a better approximation to the underlying density, the optimisation problem becomes so much more challenging that any improvements are lost. Instead of resolving these issues with a more sophisticated binning algorithm, we will fix them later in the smoothing step.  
 
 % Linear binning vs. simple binning
 
 % proviso that the bin is a integer, so can not store more than $2^32$ possible bins. (This seems like a lot but shrinks quickly as the number of dimensions grows: it's 85 bin in each direction in 5d and only 9 bins in each direction in 10d).  Outside that range can switch to standard hashing algorithms, albeit with a performance penalty because the algorithm will be more complex, and additional equality comparisons will be required. (Read citations on \url{http://en.wikipedia.org/wiki/Perfect_hash_function} and cite appropritately)
 
-\section{Summarise}
-\label{sec:summarise}
+\subsection{Summarise}
+\label{sub:summarise}
 
-Once each of the $n$ original data points has been placed into an integer bin $m$ ($m \ll n$), the next step is to collapse all of the $n_i$ points in each bin into a fixed number of summary statistics, like the count, mean or standard deviation. Summary statistics involve a tension between computational efficiency, robustness and accuracy.
+Once each of the $n$ original data points has been placed into an integer bin $m$ ($m \ll n$), the next step is to collapse the points in each bin into a small number of summary statistics, like the count, mean or standard deviation. Picking useful summary statistics requires balancing between computational efficiency and statistical robustness. 
 
-A back-of-the-envelope calculation gives us a performance target: assuming we want to condense 100 million observations into 10,000 bins in under 5s, we need to be able to compute each summary of 10,000 observations in 0.5 ms, which implies we have no more than 50 ns to process each observation. This is achievable with a high-performance language like C++. In the reference implementation, summarising $10^8$ observations in $10^4$ bins takes $\sim 2.8$s for the mean, $\sim 3$s for the variance, and $\sim 5.8$s the median. \footnote{Timings performed on a 2.6 GHz Intel Core i7, 15\" MacBook retina} \footnote{These are likely to be upper bounds as I have only programmed in C++ for 6 months, and did not use any performance tricks}.  More details are provided in Section~\ref{sub:benchmarks}.
-
-It is useful to consider possible summary statistics in view of the classification of Gray et al. \citep{gray:1997}. A summary is:
+Gray et al. \citep{gray:1997} provide a useful classification for understanding the computational characteristics of a summary statistic. A summary is:
 
 \begin{itemize}
   \item {\bf distributive} if it can be computed using a single element of interim storage, and summaries from subgroups can be combined. This includes count, sum, min, and max.
   
   \item {\bf algebraic} if it is a combination of a fixed number of distributive statistics. This includes the mean (count + sum), standard deviation (count + sum + sum of squares) and higher moments like skewness and kurtosis.
   
-  \item {\bf holistic}, if it requires interim storage that grows with the input data. This includes quantiles (like the median), count of distinct elements or the most common value. 
+  \item {\bf holistic} if it requires interim storage that grows with the input data. This includes quantiles (like the median), count of distinct elements or the most common value. 
 
 \end{itemize}
 
-Algebraic and distributive statistics are important because results from subgroups can easily be combined. This has two benefits: it makes parallelisation trivial, and it supports a tiered approach to exploration. For example, if you have 100 million observations, you might first finely bin into 100,000 bins. Then for any specific 1d plot, you rebin or subset, which is much faster than working with the original data. This tiered approach is particularly useful for interactive visualisations; the fine binning can be done upfront when the visualisation is created, then modifying the binwidth or the plot ranges can be done at interactive speeds.
+Algebraic and distributive statistics are important because results from subgroups can easily be combined. This has two benefits: it makes parallelisation trivial, and it supports a tiered approach to exploration. For example, if you have 100 million observations, you might first finely bin into 100,000 bins. Then for any specific 1d plot, you rebin or subset the fine bins, which will take much less time than condensing the original data. This tiered approach is particularly useful for interactive visualisations; the fine binning can be done upfront when the visualisation is created, then modifying the binwidth or plot limits can be done interactively.
 
-The mean, standard deviation and higher moments can all be computed in a single pass, taking $O(n)$ time and $O(1)$ memory. Some care is needed as naive implementations (e.g.\ computing the variance as $\sum_i^n \frac{x_i^2}{n} - \left( \sum_i^n \frac{x_i}{n} \right)^2$) can suffer from severe numerical problems, but better algorithms are well-known \citep{welford:1962}. The median also takes $O(n)$ time (using the quick-select algorithm), but needs $O(n)$ memory: there is no way to compute the median without storing at least half of the data, and given the median of two subgroups, no way to compute the mean of the full dataset.
+The mean, standard deviation and higher moments can all be computed in a single pass, taking $O(n)$ time and $O(1)$ memory. Some care is needed as naive implementations (e.g.\ computing the variance as $\sum_i^n x_i^2 / n - \left( \sum_i^n x_i / n \right)^2$) can suffer from severe numerical problems, but better algorithms are well known \citep{welford:1962}. The median also takes $O(n)$ time (using the quick-select algorithm), but needs $O(n)$ memory: there is no way to compute the median without storing at least half of the data, and given the median of two subgroups, no way to compute the median of the full dataset.
 
-There is an interesting tension between the mean and the median: the median is much more robust to unusual values than the mean, but requires unbounded memory. A useful way to look at the robustness of a statistic is the {\bf breakdown point}. The breakdown point of a summary is the proportion of observations an attacker needs to control before they can arbitrarily influence the resulting summary. It is 0 for the mean: if you can influence one value, you can force the mean to be any value you like. The breakdown point for the median is 0.5: you have to taint 50\% of the observations before you can arbitrarily change the median. The mean is computationally desirable, but is less statistical desirable since just one arbitrary value can arbitrarily taint the summary.  This is a general tension: the easiest summary statistics to compute are also the least robust, while robust statistics are usually holistic.
+There is an interesting tension between the mean and the median: the median is much more robust to unusual values than the mean, but requires unbounded memory. A useful way to look at the robustness of a statistic is the {\bf breakdown point}. The breakdown point of a summary is the proportion of observations an attacker needs to control before they can arbitrarily influence the resulting summary. It is 0 for the mean: if you can influence one value, you can force the mean to be any value you like. The breakdown point for the median is 0.5: you have to taint 50\% of the observations before you can arbitrarily change the median. The mean is computationally desirable, but is less statistically desirable since just one flawed value can arbitrarily taint the summary. This is a general problem: the easiest summary statistics to compute are also the least robust, while robust statistics are usually holistic.
 
-It is often possible to convert a summary from holistic to algebraic by taking an approximation. For example, the median can be approximated by the remedian \citep{rousseeuw:1990}, the count of distinct values by the hyperloglog  algorithm \citep{flajolet:2007}, and other quantiles by a variety of methods \citep{finkelstein:1994,hurley:1995,liechty:2003}. Others have proposed general methods for adapting any holistic summary \citep{christmann:2007}. This is an active area of research, and is particularly important for streaming data as there is no way to hold all data in memory.  
+It is often possible to convert a summary from holistic to algebraic by taking an approximation. For example, the count of distinct values can be approximated with the hyperloglog algorithm \citep{flajolet:2007}, the median with the remedian \citep{rousseeuw:1990}, and other quantiles with other methods \citep{finkelstein:1994,hurley:1995,liechty:2003}. Others have proposed general methods for approximating any holistic summary \citep{christmann:2007}.
 
-% Robust alternatives to the standard devation often depend on pairwise distances \citep{rousseeuw:1993}, \citep{croux:1992} 
+Even if you do use robust statistics, you are only protected from scattered outliers, not a radical mismatch between the data and the summary. For example, a single measure of central tendency (mean or median) will never be a good summary if the data has multiple modes. Compare Figures~\ref{fig:condense} and \ref{fig:condense-2d}: there appears to be multiple modes of speed for a given distance and hence the mean is not a good summary. This means that visualisation must be iterative: you can not collapse a variable to a summary until you have some confidence that the summary isn't throwing away important information. In practice, practitioners may need to develop their own summary statistics for the pecularities of their data; but the ones discussed here should provide a good start for general use.
 
-Even if you do use robust statistics, you are only protected from scattered outliers, not a radical mismatch between the data and the summary: a mean and sd will never be a good summary if the data has two strong modes. For this reason, visualisation must be iterative - you can not collapse a variable to a summary until you have some confidence that the summary isn't throwing away important information. In practice, practitioners may need to develop their own summary statistics for the pecularities of the data they use; the ones discussed here should provide a good start for general use.
-
-Finally, there is no reason to limit ourselves to only 1d summary functions. 2d summaries like the correlation, or slope of a linear model may also be interesting. All statistics from a linear model can be computed in $O(n)$ in time and $O(1)$ in space \citep{miller:1992}, are and thus suggest a fruitful ground for generalisations to higher dimensions. Other 2d summaries that can be computed quickly will also be useful; scagnostics \citep{wilkinson:2005} are an obvious starting place.
+Finally, there is no reason to limit ourselves to only 1d summary functions. 2d summaries like the correlation or the slope of a linear model may also be interesting. All statistics from a linear model can be computed in $O(n)$ in time and $O(1)$ in space \citep{miller:1992}, are and thus suggest a fruitful ground for generalisations to higher dimensions. Other quickly computed 2d summaries are also of interest; scagnostics \citep{wilkinson:2005} are an obvious starting place.
 
 \section{Smooth}
 \label{sec:smooth}
@@ -302,6 +333,7 @@ A simple approach to deal with spatial outliers is to remove the smallest outer 
 Typically, you don't want to ignore these unusual values, but instead you partition your analysis to look at the most common and at the unusual. Some small amount of peeling (often $< 1\%$) seems to improve most 2d plots, drawing the focus to the bulk of the data.  For plots of non-count summaries, this also has the additional benefit of reducing outliers in the summary dimension. 
 
 \subsubsection{Modulus transformation}
+\label{sub:transform}
 
 The modulus transformation \citep{john:1980} is a generalisation of the box-cox transformation \citep{box:1964} to deal with positive and negative data. It provides a flexible tool to shrink or expand the tails of a distribution.
 
@@ -331,6 +363,9 @@ The reference implementation provides some of the constraints that guide this pa
 
 \subsection{Benchmarks}
 \label{sub:benchmarks}
+
+A back-of-the-envelope calculation gives us a performance target: assuming we want to condense 100 million observations into 10,000 bins in under 5s, we need to be able to compute each summary of 10,000 observations in 0.5 ms, which implies we have no more than 50 ns to process each observation. This is achievable with a high-performance language like C++. In the reference implementation, summarising $10^8$ observations in $10^4$ bins takes $\sim 2.8$s for the mean, $\sim 3$s for the variance, and $\sim 5.8$s the median. \footnote{Timings performed on a 2.6 GHz Intel Core i7, 15\" MacBook retina} \footnote{These are likely to be upper bounds as I have only programmed in C++ for 6 months, and did not use any performance tricks}.  More details are provided in Section~\ref{sub:benchmarks}.
+
 
 C++ is extremely efficient and the data structures and algorithms provided by the STL make programming considerably faster.  The C++ code is by no means expert and uses only a smattering of advanced C++ functions; I have been programming in C++ for less than six months. There are likely to be considerable opportunities for further optimisation.
 
