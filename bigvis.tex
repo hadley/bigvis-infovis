@@ -18,6 +18,8 @@
 \usepackage{booktabs}
 \usepackage{amsmath}
 
+\raggedbottom
+
 %% This turns references into clickable hyperlinks.
 \usepackage[bookmarks,backref=false,linkcolor=black]{hyperref} %,colorlinks
 \hypersetup{
@@ -66,22 +68,20 @@
 %% Abstract section.
 \abstract{
 
-Visualising ``big'' data is challenging both perceptually and computationally: it is hard to know what to display and hard to efficiently display once you know. To tackle both problems, this paper outlines a framework for displaying large in-memory datasets (i.e.\ on the order of 100 million observations) on commodity hardware. It is based around a four step process: group, summarise, smooth, and visualise. Binning and summarising efficiently (O(n)) condense the large original data into a size suitable for display (recognising that there are on order of 3 million pixels on a screen). Smoothing helps resolve statistical problems from binning and summarising, and because the data is smaller, can use more sophisticated algorithms.
+Visualising large data is challenging both perceptually and computationally: it is hard to know what to display and hard to efficiently display it once you know what you want. This paper outlines a framework to tackle both problems, based around a four step process of bin, summarise, smooth, and visualise. Binning and summarising efficiently (O(n)) condense the large raw data into a form suitable for display (recognising that there are $\sim 3$ million pixels on a screen). Smoothing helps resolve problems from binning and summarising, and because it works on smaller, condensed datasets, it can make of use algorithms that are more statistical efficient even though they're more computationally expensive.
 
-We provide a single-core in-memory implementation with the {\tt bigvis} R package that produces static visualisation, which uses C++ for internal high-performance implementation, and an R wrapper to provide a user-friendly interface for analysts. The framework is readily extensible to parallel out-of-memory solutions, and to interactive and dynamic graphics.
+The paper is accompanied by single-core in-memory reference implementation that produces static graphics in R, the {\tt bigvis} package. The framework is readily extensible to parallel out-of-memory solutions, and to interactive and dynamic graphics.
 } 
 
 %% Keywords that describe your work. Will show as 'Index Terms' in journal
 %% please capitalize first letter and insert punctuation after last keyword
-\keywords{Big data, kernel smoothing}
+\keywords{Big data, kernel smoothing.}
 
 %% ACM Computing Classification System (CCS). 
 %% See <http://www.acm.org/class/1998/> for details.
 \CCScatlist{ % not used in journal version
-  \category{H.5.2}{Information Interfaces and Presentation}%
-  {User Interfaces --- Graphical user interfaces (GUI), Interaction styles, Screen design, Evaluation/methodology}
-  \CCScat{I.6.8}{Computing Methodologies}%
-  {Simulation and Modeling}{Visual Simulation};
+  \CCScat{I.5.1}{Pattern recognition}{Models}{Statistical};
+  \CCScat{G.3}{Probability and statistics}{Statistical computing};
 }
 
 \teaser{
@@ -90,6 +90,7 @@ We provide a single-core in-memory implementation with the {\tt bigvis} R packag
   \includegraphics[width=5.33cm]{teaser-2}%
   \includegraphics[width=5.33cm]{teaser-3}
   \caption{Refining a visualisation exploring average delay (colour, in minutes) as a funtion of distance (x axis, in miles) and speed (y axis, in mph) for 76 million flights. (Left) All data, (center) focussing on the middle 99.5\% of the data, (right) transforming average delay to shrink the tails and focus on values near 0. Flights with higher than average speeds (top-right) have shorter delays (red); more interestingly, a subset of shorter slower flights (bottom-left) have average delays close to 0 (white).}
+  \label{fig:teaser}
 }
 
 
@@ -126,7 +127,7 @@ The reference implementation provides some of the constraints that guide this pa
 
 Section~\ref{sec:conclusion} concludes with directions for future work, discussing how this framework extends naturally to multi-core, out-of-memory data, and how it could be adapted for the interactive analysis of large data.
 
-To illustrate these techniques will we use flight on-time performance made available by the Research and Innovation Technology Administration of the Bureau of Transporation Statistics\footnote{\url{http://www.transtats.bts.gov/Fields.asp?Table_ID=236}}. We aggregated flight performance data for all domestic US flights from 2000-2011, $\sim$ 78\,000\,000 flights in total. The complete dataset has 111 variables, but here we'll focus on 4: the distance of the flight (miles), the elapsed flight time (in minutes), the average speed (in mph) and the arrival delay (in minutes). The data was mildly cleaned: negative times, speeds greater 761 mph (the speed of sound), and distances greater than 2724 miles (longest flight in the continental US, SEA-MIA) Approximately 1.7 million (2.2\%) of the times were negative: these were replaced with missing values.
+To illustrate these techniques will we use flight on-time performance made available by the Research and Innovation Technology Administration of the Bureau of Transporation Statistics \footnote{\url{http://transtats.bts.gov/Fields.asp?Table_ID=236}}. We aggregated flight performance data for all domestic US flights from 2000-2011, $\sim$ 78\,000\,000 flights in total. The complete dataset has 111 variables, but here we'll focus on 4: the distance of the flight (miles), the elapsed flight time (in minutes), the average speed (in mph) and the arrival delay (in minutes). The data was mildly cleaned: negative times, speeds greater 761 mph (the speed of sound), and distances greater than 2724 miles (longest flight in the continental US, SEA-MIA) Approximately 1.7 million (2.2\%) of the times were negative: these were replaced with missing values.
 
 \section{Related work}
 \label{sec:related-work}
@@ -300,7 +301,7 @@ This principle also needs to be carried through all other components of the fram
 
 \subsection{Missing values}
 
-As the size of data grows, the probability of finding very unusual values also grows. In practice, we have found the visualisation of most large datasets look like Figure~\ref{fig:empty} - most of the data is concentrated in a relatively small error of the plot. We have two tools to deal with this: peeling, when the outliers are spatial; and the modulus transformation, when the outliers are in colour, size or another aesthetic.
+As the size of data grows, the probability of finding very unusual values also grows. In practice, we have found the visualisation of most large datasets look like Figure~\ref{fig:teaser} - most of the data is concentrated in a relatively small error of the plot. We have two tools to deal with this: peeling, when the outliers are spatial; and the modulus transformation, when the outliers are in colour, size or another aesthetic.
 
 \subsubsection{Peeling}
 
@@ -342,11 +343,11 @@ C++ is extremely efficient and the data structures and algorithms provided by th
 These benchmarks ignore the time needed to load the data into R, which is on the order of 3-5 seconds once it has been serialised in R's binary dataformat.  Unfortunately due to inefficiencies in the implementation of R's data frame strucutre, data frames can not be used to work with very large vectors without substantial performance penalities. Future work will hopefully address some of the deficiencies in R's data model and make it easier to work with large datasets.
 
 
-\begin{figure}[htb]
- \centering
+% \begin{figure}[htb]
+%  \centering
 %  \includegraphics[width=1.5in]{sample}
- \caption{Sample illustration.}
-\end{figure}
+%  \caption{Sample illustration.}
+% \end{figure}
 
 \section{Future work}
 \label{sec:conclusion}
