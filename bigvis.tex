@@ -227,6 +227,13 @@ Smoothing is an important additional step after summarising because it allows us
 
 Note that when applied to count summaries, these methods are subtly different from a kernel density estimate. A kernel mean is similar to a kernel density estimate: but a kernel mean divides by (normalises by) by the total weight at each point. This change is most noticeable with small bandwidths: the kernel density estimates will be very large (because they must integrate to 1), and outside the range of the data the estimates will be 0, where outside the range of the data the smoothed counts will be undefined (0/0).
 
+\begin{figure}[htb]
+ \centering
+ \includegraphics[width=0.75\linewidth]{smooth-types}
+ \caption{Five types of smoothing on a artificial dataset generated with $\sin(x)$ on $[0, \pi]$, with random normal noise with $\sigma = 0.2$, and an outlier at $\pi / 2$. Smoothes are arranged from simplest (top, binned) to most accurate (bottom, robust local regression). To aid comparison each smooth is shown twice, prominently with a thick black line, and then is repeated again on the next plot to make it easier to see the differences.  The subtlest difference is the between the smooth and regression: look closely at the boundaries.}
+ \label{fig:smooth-types}
+\end{figure}
+
 There are three techniques in our family of smoothers: kernel means (aka Nadaraya-Watston smoothing), kernel regression (aka local regression) and robust kernel regression (aka loess). These effectively improve upon a simple moving average, and provide a smooth tradeoff of computational performance vs.\ statistical performance. While closely related, these methods developed in different parts of statistics at different times, and the terminology is inconsistent. \citep{cleveland:1996} provides a good historical overview of kernel smoothing methods.
 
 The intution for these methods are simple, we want to smooth the value at each location by taking into account the neighbouring points. The weight closer points more heavily than distant points we use a {\bf kernel function}. Many kernels are available, but there is little evidence to suggest that the precise form of the kernel is important. Gaussian is common, but we use the triweight, $K(x) = (1 - |x^3|)^2 I_{|x| < 1}$, because it is bounded and simple (evaluation of this function is about 10x faster than evaluation of the Gaussian kernel).  
@@ -356,6 +363,6 @@ The authors wish to thank Yue Hue who coded up many of the initial prototypes. A
 
 \bibliographystyle{abbrv}
 % bibtool -x bigvis > references.bib
-\newpage
+
 \bibliography{references}
 \end{document}
