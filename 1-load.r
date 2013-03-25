@@ -4,6 +4,7 @@ if (!exists("delay", inherits = FALSE)) {
 
 if (!exists("dist", inherits = FALSE)) {
   dist <- readRDS("data/dist.rds")
+  dist[dist > 2724] <- NA
 }
 
 if (!exists("time", inherits = FALSE)) {

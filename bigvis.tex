@@ -126,7 +126,7 @@ The reference implementation provides some of the constraints that guide this pa
 
 Section~\ref{sec:conclusion} concludes with directions for future work, discussing how this framework extends naturally to multi-core, out-of-memory data, and how it could be adapted for the interactive analysis of large data.
 
-To illustrate these techniques will we use flight on-time performance made available by the Research and Innovation Technology Administration of the Bureau of Transporation Statistics\footnote{\url{http://www.transtats.bts.gov/Fields.asp?Table_ID=236}}. We aggregated flight performance data for all domestic US flights from 2000-2011, $\sim$ 78\,000\,000 flights in total. The complete dataset has 111 variables, but here we'll focus on 4: the distance of the flight (miles), the elapsed flight time (in minutes), the average speed (in mph) and the arrival delay (in minutes). Approximately 1.7 million (2.2\%) of the times were negative: these were replaced with missing values.
+To illustrate these techniques will we use flight on-time performance made available by the Research and Innovation Technology Administration of the Bureau of Transporation Statistics\footnote{\url{http://www.transtats.bts.gov/Fields.asp?Table_ID=236}}. We aggregated flight performance data for all domestic US flights from 2000-2011, $\sim$ 78\,000\,000 flights in total. The complete dataset has 111 variables, but here we'll focus on 4: the distance of the flight (miles), the elapsed flight time (in minutes), the average speed (in mph) and the arrival delay (in minutes). The data was mildly cleaned: negative times, speeds greater 761 mph (the speed of sound), and distances greater than 2724 miles (longest flight in the continental US, SEA-MIA) Approximately 1.7 million (2.2\%) of the times were negative: these were replaced with missing values.
 
 \section{Related work}
 \label{sec:related-work}
@@ -142,6 +142,14 @@ There are other techniques to deal scatterplots of large data. Hexbin plots \cit
 
 \section{Bin}
 \label{sec:bin}
+
+
+\begin{figure}[htb]
+ \centering
+ \includegraphics[width=\linewidth]{condense}
+ \caption{Distance binned into 273 10 mile wide bins, summarise with count, and average and standard deviation of speed.}
+ \label{fig:condense}
+\end{figure}
 
 The first stage of the process is to condense the data, reducing millions of data points to approximately one summary per pixel available on the screen.  To do this we must first determine how to group the data into bins; in other words, we need to assign each data point to an integer. We want an injective mapping, so that many data points will be mapped to a single integer; this is the chief means by which this framework deals with large data. Important to think of this as a separate step, because it may often be performed outside of the visualisation environment, for example in the database layer. 
 
@@ -196,6 +204,13 @@ Finally, there is no reason to limit ourselves to only 1d summary functions. 2d 
 
 \section{Smooth}
 \label{sec:smooth}
+
+\begin{figure}[htb]
+ \centering
+ \includegraphics[width=\linewidth]{smooth}
+ \caption{The same underlying data from Figure~\ref{fig:condense}, but smoothed with a bandwidth of 50. This removes much of the uninteresting variation while preserving the main trends.}
+ \label{fig:smooth}
+\end{figure}
 
 Smoothing is an important additional step after summarising because it allows us to resolve problems with excessive variability in the summarised statistics. This variability may arise because the bin size is too small, or because there are unusual values in the bin. There are many approaches to smoothing, but we suggest a family of kernel based methods, because:
 

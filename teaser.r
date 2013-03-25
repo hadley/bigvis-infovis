@@ -1,6 +1,7 @@
 library(bigvis)
 library(ggplot2)
 library(scales)
+library(grid)
 source("1-load.r")
 
 # Explore 1d distributions -----------------------------------------------------
