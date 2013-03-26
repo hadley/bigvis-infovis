@@ -1,13 +1,14 @@
 library(plyr)
 library(ggplot2)
 library(MASS)
-
+library(grid)
 set.seed(1014)
 
 x <- seq(0, pi, length = 50)
 y <- sin(x) + rnorm(length(x), sd = 0.2)
 y[25] <- -1
-# plot(x, y)
+
+df <- data.frame(x, y)
 
 # Binned mean -----------------------------------------------------
 gx <- round_any(x, pi / 10, floor)
@@ -59,11 +60,11 @@ y6 <- unlist(Map(function(xi) {
 
 
 all <- rbind(
-  data.frame(x, cur = y2, prev = NA, type = "binned"),
-  data.frame(x, cur = y3, prev = y2, type = "running"),
-  data.frame(x, cur = y4, prev = y3, type = "smoothed"),
-  data.frame(x, cur = y5, prev = y4, type = "regression"),
-  data.frame(x, cur = y6, prev = y5, type = "robust")
+  data.frame(x, cur = y2, prev = NA, type = "binned mean"),
+  data.frame(x, cur = y3, prev = y2, type = "running mean"),
+  data.frame(x, cur = y4, prev = y3, type = "kernel mean"),
+  data.frame(x, cur = y5, prev = y4, type = "kernel regression"),
+  data.frame(x, cur = y6, prev = y5, type = "kernel robust regression")
 )
 
 ggplot(all, aes(x, y)) +

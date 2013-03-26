@@ -19,8 +19,6 @@
 \usepackage{amsmath}
 \usepackage{mathtools}
 
-\raggedbottom
-
 %% This turns references into clickable hyperlinks.
 \usepackage[bookmarks,backref=false,linkcolor=black]{hyperref} %,colorlinks
 \hypersetup{
@@ -138,20 +136,22 @@ There are other techniques to deal scatterplots of large data. Hexbin plots \cit
 \section{Condense}
 \label{sec:condense}
 
-The first step is to condensed the large original dataset to binned summaries which we will later visualise. Figure~\ref{fig:condense} illustrates the principle with distance summarising each bin with the number of observations in that bin, and the mean and standard deviation of distance. To do this we need to first assign each observation to a bin, as described in Section~\ref{sub:bin}; then summarise all observations in a bin with a handful of summary statistics, as described in Section~\ref{sub:summarise}.
+The first step in the framework is to condense the large original dataset to binned summaries which we will later visualise. Figure~\ref{fig:condense} illustrates the principle with the distance variable. Distance is binned in to 10-mile-wide bins, and each bin is summarised with three counts: the count, the average speed, and the standard deviation of the speed. To do this we first assign each observation to an integer bin, as described in Section~\ref{sub:bin}; and then reduce all observations in a bin to a handful of summary statistics, as described in Section~\ref{sub:summarise}.
 
 \begin{figure}[htb]
  \centering
  \includegraphics[width=\linewidth]{condense}
- \caption{Distance binned into 273 10 mile wide bins, summarise with count, and average and standard deviation of speed.}
+ \caption{Distance binned into 273 10-mile-wide bins, summarised with count, mean speed and standard deviation of speed. Note the varying scales on the y-axis.}
  \label{fig:condense}
 \end{figure}
-
 
 \subsection{Bin}
 \label{sub:bin}
 
-To do this we must first determine how to group the data into bins; in other words, we need to assign each data point to an integer. We want an injective mapping, so that many data points will be mapped to a single integer; this is the chief means by which this framework deals with large data. It is important to think of this as a separate step, as it may be performed outside of the visualisation environment, for example in the database layer (integers take up half the space of doubles, so this could half data transmission costs). The most important type of binning is {\bf fixed width binning}. Fixed width binning is extremely computationally efficient, easily extended from 1d to nd, and while statistically na\"ive, there is little evidence that variable binwidths do better. 
+We first assign each observation to an integer representing a bin. We want an injective mapping, so that many data points will be mapped to a single integer.
+We use {\bf fixed width binning}. Fixed width binning is extremely computationally efficient, easily extended from 1d to nd, and while statistically na\"ive, there is little evidence that variable binwidths do better. 
+
+It is important to think of binning as a separate step, as it may be performed outside of the visualisation environment, for example in the database layer (integers require half as much space as doubles, so this could half data transmission costs). 
 
 \subsubsection{Computation}
 
@@ -166,7 +166,7 @@ Bins are 1-indexed, reserving bin 0 for missing values and values smaller than t
 
 \subsubsection{Extension to nd}
 
-Fixed width binning is easily extensible to multiple dimensions. You first bin each dimension, producing a vector of integers $(x_1, x_2, ..., x_m)$. It is then straightforward to devise a bijective map between this vector and a single integer, given that we know the largest bin in each dimension: If we have $m$ dimensions, each taking possible values $0, 1, \ldots, n_m$, then we can collapse the vector of integers into a single integer using this formula:
+Fixed width binning can be easily extended to multiple dimensions. You first bin each dimension, producing a vector of integers $(x_1, x_2, ..., x_m)$. It is then straightforward to devise a bijective map between this vector and a single integer, given that we know the largest bin in each dimension. If we have $m$ dimensions, each taking possible values $0, 1, \ldots, n_m$, then we can collapse the vector of integers into a single integer using this formula:
 
 \begin{equation}
   \label{eq:nd-bins}
@@ -178,21 +178,20 @@ Fixed width binning is easily extensible to multiple dimensions. You first bin e
 
 It is easy to see how this works if each dimension has ten bins. For example, to project 3d bin $(5, 0, 4)$ into 1d, we compute $5 + 0 * 10 + 4 * 100 = 4 + 10 * (0 + 10 * 5) = 405$. Given a single integer, we can find the vector of $m$ original bins by reversing the transformation, peeling off the integer remainder after dividing by 10. For example, 1d bin $356$ corresponds to 3d bin $(6, 5, 3)$.
 
-This function is a monotone minimal perfect hash, and highly efficient hashmap variants are available that make use of its special properties \citep{belazzougui:2009}. For example, because the hash is perfect, we can eliminate the equivality comparison that is usually needed after a candidate has been found with the hashed value. Even if this data structure is not used (as in the reference implementation), it easy to efficiently summarise bins in high-dimensions using standard data structures (either a vector if most bins have data in them, or a hashmap if not).
+This function is a monotone minimal perfect hash, and highly efficient hashmap variants are available that make use of its special properties \citep{belazzougui:2009}. For example, because the hash is perfect, we can eliminate the equivality comparison that is usually needed after a candidate has been found with the hashed value. Even if this data structure is not used (as in the reference implementation), it easy to efficiently summarise bins in high-dimensions using standard data structures: either a vector if most bins have data in them, or a hashmap if not.
 
-The challenges of working with nd summaries are typically perceptual, rather than computation. Figure~\ref{fig:condense-2d} shows a 2d summary of distance and speed: even moving from 1d to 2d makes it significantly harder to accurately percieve count \citep{cleveland:1984}.
+The challenges of working with nd summaries are typically perceptual, rather than computational. Figure~\ref{fig:condense-2d} shows a 2d summary of distance and speed: even moving from 1d to 2d makes it significantly harder to accurately percieve count \citep{cleveland:1984}.
 
 \begin{figure}[htb]
  \centering
  \includegraphics[width=\linewidth]{condense-2d}
- \caption{Distance and speed summarised with count.  Note that counts have been transformed slightly as described in Section~\ref{sub:transform} to draw attention to regions of lower density}
+ \caption{Distance and speed summarised with count. Note that count scale has been transformed slightly, as described in Section~\ref{sub:transform}, to draw attention to regions with fewer counts.}
  \label{fig:condense-2d}
 \end{figure}
 
-
 \subsubsection{Statistical limitations}
 
-Ideally, we would like bigger bins in regions with few data points because the error of the summary is typically $\Theta(1 / \sqrt{n})$. For example, in Figure~\ref{fig:condense} we would like to have bigger bins for larger distances since the counts are small and the estimates of mean and standard deviation are more variable than we would like. However, there is little evidence that varying binwidths leads to asymptotically lower error \citep{terrell:1992}; while varying bin widths could provide a better approximation to the underlying density, the optimisation problem becomes so much more challenging that any improvements are lost. Instead of resolving these issues with a more sophisticated binning algorithm, we will fix them later in the smoothing step.  
+Ideally, we would like bigger bins in regions with few data points because the error of the summary is typically $\Theta(1 / \sqrt{n})$. For example, in Figure~\ref{fig:condense} we would like to have bigger bins for larger distances since the counts are small and the estimates of mean and standard deviation are more variable than we would like. However, there is little evidence that varying binwidths leads to asymptotically lower error \citep{terrell:1992}; while varying bin widths should provide a better approximation to the underlying data, the optimisation problem is so much more challenging that any potential improvements are lost. Instead of resolving these issues with a more sophisticated binning algorithm, we will fix them in the later smoothing step.  
 
 % Linear binning vs. simple binning
 
@@ -201,12 +200,14 @@ Ideally, we would like bigger bins in regions with few data points because the e
 \subsection{Summarise}
 \label{sub:summarise}
 
-Once each of the $n$ original data points has been placed into an integer bin $m$ ($m \ll n$), the next step is to collapse the points in each bin into a small number of summary statistics, like the count, mean or standard deviation. Picking useful summary statistics requires balancing between computational efficiency and statistical robustness. 
+Once each of the $n$ original data points has been placed into one of $m$ integer bins ($m \ll n$), the next step is to collapse the points in each bin into a small number of summary statistics. Picking useful summary statistics requires balancing between computational efficiency and statistical robustness. 
+
+\subsubsection{Computationl efficiency}
 
 Gray et al. \citep{gray:1997} provide a useful classification for understanding the computational characteristics of a summary statistic. A summary is:
 
 \begin{itemize}
-  \item {\bf distributive} if it can be computed using a single element of interim storage, and summaries from subgroups can be combined. This includes count, sum, min, and max.
+  \item {\bf distributive} if it can be computed using a single element of interim storage and summaries from subgroups can be combined. This includes count, sum, min, and max.
   
   \item {\bf algebraic} if it is a combination of a fixed number of distributive statistics. This includes the mean (count + sum), standard deviation (count + sum + sum of squares) and higher moments like skewness and kurtosis.
   
@@ -214,20 +215,26 @@ Gray et al. \citep{gray:1997} provide a useful classification for understanding 
 
 \end{itemize}
 
-Algebraic and distributive statistics are important because results from subgroups can easily be combined. This has two benefits: it makes parallelisation trivial, and it supports a tiered approach to exploration. For example, if you have 100 million observations, you might first finely bin into 100,000 bins. Then for any specific 1d plot, you rebin or subset the fine bins, which will take much less time than condensing the original data. This tiered approach is particularly useful for interactive visualisations; the fine binning can be done upfront when the visualisation is created, then modifying the binwidth or plot limits can be done interactively.
-
-The mean, standard deviation and higher moments can all be computed in a single pass, taking $O(n)$ time and $O(1)$ memory. Some care is needed as naive implementations (e.g.\ computing the variance as $\sum_i^n x_i^2 / n - \left( \sum_i^n x_i / n \right)^2$) can suffer from severe numerical problems, but better algorithms are well known \citep{welford:1962}. The median also takes $O(n)$ time (using the quick-select algorithm), but needs $O(n)$ memory: there is no way to compute the median without storing at least half of the data, and given the median of two subgroups, no way to compute the median of the full dataset.
-
-There is an interesting tension between the mean and the median: the median is much more robust to unusual values than the mean, but requires unbounded memory. A useful way to look at the robustness of a statistic is the {\bf breakdown point}. The breakdown point of a summary is the proportion of observations an attacker needs to control before they can arbitrarily influence the resulting summary. It is 0 for the mean: if you can influence one value, you can force the mean to be any value you like. The breakdown point for the median is 0.5: you have to taint 50\% of the observations before you can arbitrarily change the median. The mean is computationally desirable, but is less statistically desirable since just one flawed value can arbitrarily taint the summary. This is a general problem: the easiest summary statistics to compute are also the least robust, while robust statistics are usually holistic.
+Algebraic and distributive statistics are important because results from subgroups can easily be combined. This has two benefits: it makes parallelisation trivial, and it supports a tiered approach to exploration. For example, if you have 100 million observations, you might first finely bin into 100,000 bins. Then for any specific 1d plot, you rebin or subset the fine bins rather than the original data. This tiered approach is particularly useful for interactive visualisations; the fine binning can be done upfront when the visualisation is created, then modifying the binwidth or plot limits can be done interactively.
 
 It is often possible to convert a summary from holistic to algebraic by taking an approximation. For example, the count of distinct values can be approximated with the hyperloglog algorithm \citep{flajolet:2007}, the median with the remedian \citep{rousseeuw:1990}, and other quantiles with other methods \citep{finkelstein:1994,hurley:1995,liechty:2003}. Others have proposed general methods for approximating any holistic summary \citep{christmann:2007}.
 
-Even if you do use robust statistics, you are only protected from scattered outliers, not a radical mismatch between the data and the summary. For example, a single measure of central tendency (mean or median) will never be a good summary if the data has multiple modes. Compare Figures~\ref{fig:condense} and \ref{fig:condense-2d}: there appears to be multiple modes of speed for a given distance and hence the mean is not a good summary. This means that visualisation must be iterative: you can not collapse a variable to a summary until you have some confidence that the summary isn't throwing away important information. In practice, practitioners may need to develop their own summary statistics for the pecularities of their data; but the ones discussed here should provide a good start for general use.
+The mean, standard deviation and higher moments can all be computed in a single pass, taking $O(n)$ time and $O(1)$ memory. Some care is needed as naive implementations (e.g.\ computing the variance as $\sum_i^n x_i^2 / n - \left( \sum_i^n x_i / n \right)^2$) can suffer from severe numerical problems, but better algorithms are well known \citep{welford:1962}. The median also takes $O(n)$ time (using the quick-select algorithm), but needs $O(n)$ memory: there is no way to compute the median without storing at least half of the data, and given the median of two subgroups, no way to compute the median of the full dataset.
 
-Finally, there is no reason to limit ourselves to only 1d summary functions. 2d summaries like the correlation or the slope of a linear model may also be interesting. All statistics from a linear model can be computed in $O(n)$ in time and $O(1)$ in space \citep{miller:1992}, are and thus suggest a fruitful ground for generalisations to higher dimensions. Other quickly computed 2d summaries are also of interest; scagnostics \citep{wilkinson:2005} are an obvious starting place.
+\subsubsection{Statistical robustness}
+
+There is an interesting tension between the mean and the median: the median is much more robust to unusual values than the mean, but requires unbounded memory. A useful way to look at the robustness of a statistic is the {\bf breakdown point}. The breakdown point of a summary is the proportion of observations an attacker needs to control before they can arbitrarily influence the resulting summary. It is 0 for the mean: if you can influence one value, you can force the mean to be any value you like. The breakdown point for the median is 0.5: you have to taint 50\% of the observations before you can arbitrarily change the median. The mean is computationally desirable, but is less statistically desirable since just one flawed value can arbitrarily taint the summary. This is a general problem: the easiest summary statistics to compute are also the least robust, while robust statistics are usually holistic.
+
+Even if you do use robust statistics, you are only protected from scattered outliers, not a radical mismatch between the data and the summary. For example, a single measure of central tendency (mean or median) will never be a good summary if the data has multiple modes. Compare Figures~\ref{fig:condense} and \ref{fig:condense-2d}: for shorter flights, there appears to be multiple modes of speed for a given distance and so the mean is not a good summary. Visualisation must be iterative: you can not collapse a variable to a single number until you have some confidence that the summary isn't throwing away important information. In practice, users may need to develop their own summary statistics for the pecularities of their data; the ones discussed here should provide a good start for general use.
+
+\subsubsection{Higher dimensions}
+
+There is no reason to limit ourselves to only 1d summary functions. 2d summaries like the correlation may also be interesting. All statistics from a linear model can be computed in $O(n)$ in time and $O(1)$ in space \citep{miller:1992}, and are and thus suggest a fruitful ground for generalisations to higher dimensions. Other quickly computed 2d summaries are also of interest; scagnostics \citep{wilkinson:2005} are an place to start.
 
 \section{Smooth}
 \label{sec:smooth}
+
+Smoothing is an important step because it allows us to resolve problems with excessive variability in the summaries. This variability may arise because the bin size is too small, or because there are unusual values in the bin. Figure~\ref{fig:smooth} shows the results of smoothing Figure~\ref{fig:condense}: much of the small-scale variation has been smoothed away, making it easier to focus on the broad trends. There is some suggestion that the standard deviation of speed is lowest for distances of 1000--1500 miles, and rises for both smaller and large distances. This is much harder to see in Figure~\ref{fig:condense}.
 
 \begin{figure}[htb]
  \centering
@@ -236,47 +243,59 @@ Finally, there is no reason to limit ourselves to only 1d summary functions. 2d 
  \label{fig:smooth}
 \end{figure}
 
-Smoothing is an important additional step after summarising because it allows us to resolve problems with excessive variability in the summarised statistics. This variability may arise because the bin size is too small, or because there are unusual values in the bin. There are many approaches to smoothing, but we suggest a family of kernel based methods, because:
+There are many approaches to smoothing, but we use a family of kernel based methods, because they:
 
 \begin{itemize}
-  \item they are simple to implement and are fast.
+  \item are simple and efficient to compute,
   
-  \item performing kernel smoothing on binned data instead of raw data adds insignificant error \cite{wand:1994} 
+  \item have a single parameter, the {\bf bandwidth} that controls the amount of smoothing,
+
+  \item work equally well when applied to binned data \cite{wand:1994},
   
-  \item kernel methods are approximately equivalent to other more complicated types of smoothing \citep{silverman:1984}.
+  \item are approximately equivalent to other more complicated types of smoothing \citep{silverman:1984}, 
   
-  \item kernel methods form the heart of many existing statistical visualisations such as the kernel density estimator \citep{scott:1992} and average shifted histogram \citep{scott:1985} and loess \citep{cleveland:1979}.
+  \item form the heart of many existing statistical visualisations such as the kernel density plot \citep{scott:1992}, average shifted histogram \citep{scott:1985} and loess \citep{cleveland:1979}.
 
 \end{itemize}
 
-Note that when applied to count summaries, these methods are subtly different from a kernel density estimate. A kernel mean is similar to a kernel density estimate: but a kernel mean divides by (normalises by) by the total weight at each point. This change is most noticeable with small bandwidths: the kernel density estimates will be very large (because they must integrate to 1), and outside the range of the data the estimates will be 0, where outside the range of the data the smoothed counts will be undefined (0/0).
+\subsection{How it works}
+
+Figure~\ref{fig:smooth-types} illustrates the progression of smoothing methods from fast and crude to sophisticated and slow. The simplest smoothing method (top) is the binned mean, where we divide the data in bins and compute the mean of each bin. This is simple, but is locally constant and not very smooth. The next step up in complexity is the running (or nearest neighbour) mean where we average the five nearest points at each location.  This is a considerable improvement, but is still rather jagged.
 
 \begin{figure}[htb]
  \centering
  \includegraphics[width=0.75\linewidth]{smooth-types}
- \caption{Five types of smoothing on a artificial dataset generated with $\sin(x)$ on $[0, \pi]$, with random normal noise with $\sigma = 0.2$, and an outlier at $\pi / 2$. Smoothes are arranged from simplest (top, binned) to most accurate (bottom, robust local regression). To aid comparison each smooth is shown twice, prominently with a thick black line, and then is repeated again on the next plot to make it easier to see the differences.  The subtlest difference is the between the smooth and regression: look closely at the boundaries.}
+ \caption{Five types of smoothing on a artificial dataset generated with $\sin(x)$ on $[0, \pi]$, with random normal noise with $\sigma = 0.2$, and an outlier at $\pi / 2$. Smoothes are arranged from simplest (top, binned) to most accurate (bottom, robust local regression). To aid comparison each smooth is shown twice, prominently with a thick black line, and then repeated on the next plot in red to make comparison easier. The subtlest difference is the between the kernel mean and kernel regression: look closely at the boundaries.}
  \label{fig:smooth-types}
 \end{figure}
 
-There are three techniques in our family of smoothers: kernel means (aka Nadaraya-Watston smoothing), kernel regression (aka local regression) and robust kernel regression (aka loess). These effectively improve upon a simple moving average, and provide a smooth tradeoff of computational performance vs.\ statistical performance. While closely related, these methods developed in different parts of statistics at different times, and the terminology is inconsistent. \citep{cleveland:1996} provides a good historical overview of kernel smoothing methods.
+The remaining three types use a simple idea: we want to not only use the neighbouring points, but we want to weight them according to their distance from the target point. In statistics, the weighting function is traditionally called a {\bf kernel}. Many kernels are available, but there is little evidence to suggest that the precise form of the kernel is important \citep{cleveland:1996}. Gaussian kernels are common, but I recommend the triweight, $K(x) = (1 - |x|^3)^2 I_{|x| < 1}$, because it is bounded and simple (evaluation of this function is $\sim 10 \times$ faster than evaluation of a Gaussian).  
 
-The intution for these methods are simple, we want to smooth the value at each location by taking into account the neighbouring points. The weight closer points more heavily than distant points we use a {\bf kernel function}. Many kernels are available, but there is little evidence to suggest that the precise form of the kernel is important. Gaussian is common, but we use the triweight, $K(x) = (1 - |x^3|)^2 I_{|x| < 1}$, because it is bounded and simple (evaluation of this function is about 10x faster than evaluation of the Gaussian kernel).  
+At each binned location we have $x_i$, the center of the bin, $y_i$ the summary of that bin and $w_i$ the number of observations in that bin. To predict a smooth estimate at position $j$, we first compute the kernel weights for each location $k_i = K(\frac{x_j - x_i}{h})$. The parameter $h$ is called the bandwidth, and controls the degree of smoothing: the larger $h$ is, the more neighbours are used to compute the smooth and the smoother the final curve. Because of the form of the triweight kernel, any observation more than $h$ away from $x_j$ will not contribute to the smoothed value, thus enabling efficient computation.
 
-At each binned location we have $x_i$, the center of the bin, $y_i$ the summary of that bin and $w_i$ the number of observations in that bin. To predict a smooth estimate at position $j$, we first compute the kernel weights for each location $k_i = K(\frac{x_j - x_i}{h})$. The parameter $h$ is called the bandwidth, and controls the degree of smoothing: the larger $h$ is, the more neighbours are used to compute the smooth and the smoother the final curve. Note that because of the form of the triweight kernel, any observation more than $h$ away from $x_j$ will not contribute to the smoothed value.This allows for efficient computation.
+The three kernel techniques, kernel means (aka Nadaraya-Watston smoothing), kernel regression (aka local regression) and robust kernel regression (aka loess), make a tradeoff between performance and quality. They improve upon the simple runing mean and provide a smooth tradeoff of computational vs.\ statistical performance. While closely related, these methods developed in different parts of statistics at different times, and the terminology is often inconsistent. I have attempted to provide a unifying description here; \citep{cleveland:1996} provides a good historical overview of kernel smoothing methods.
 
-The weighted mean is fastest to compute but suffers from bias on the boundaries, because the neighbours only lie on one side. And as \citep{macaulay:1931} puts it: ``A little thought or experimentation will quickly convince the reader that, so long as we restrict ourselves to positive weights, no moving average, weighted or unweighted, will exactly fit any mathematical curve except a straight line.'' The weighted regression overcomes these problems by effectively using a first-degree Taylor approximation. Higher-order approximations can be used (by fitting higher order polynomials in the model), but there seems to be little additional benefit in practice \citep{cleveland:1996}.  Finally, the robust regression iteratively down-weights the effect of points far away from the curve, and reduces the impact of unusual points at the cost of increased computation time.
+The kernel (weighted) mean is fastest to compute but suffers from bias on the boundaries, because the neighbours only lie on one side. The kernel (weighted) regression overcomes this problems by effectively using a first-degree Taylor approximation. In Figure~\ref{fig:smooth-types}, you can see that the kernel mean and kernel regression are coincident everywhere except near the boundaries. Higher-order approximations can be used (by fitting higher order polynomials in the model), but there seems to be little additional benefit in practice \citep{cleveland:1996}.
 
-The three kernel smoothing techniques is readily extended to higher dimensions, using corresponding higher dimensions means and regressions. Optimisations are also available. Kernel weighted means are particularly easy to generalise because they are a convolution, and due to the associative nature of convolution it's possible to perform an nD smooth through a sequence of 1d kernel smooths. This is an important optimisation because it converts an $O(n^d)$ process to $O(nd)$.  You can treat local regression in a similar way, although it is only approximate if the grid of values is not uncorrelated. Approximate robust local regression does not work.
+Finally, the robust kernel regression iteratively down-weights the effect of points far away from the curve, and reduces the impact of unusual points at the cost of increased computation time. In Figure~\ref{fig:smooth-types} observe that the kernel robust regression is the only smoother unaffected by the unusually low point at $\pi / 2$.
+
+\subsection{High-dimensions and performance characteristics}
+
+The three kernel techniques are readily extended to higher dimensions, using corresponding higher dimensional means and regressions. Optimisations are also available. Kernel weighted means are particularly easy to efficiently extend to higher dimensions  because they are a convolution, and due to the associative nature of convolution it's possible to perform an nD smooth through a sequence of 1d kernel smooths. This is an important optimisation because it converts an $O(n^d)$ process to $O(nd)$.  You can treat local regression in a similar way, although it is only approximate if the grid of values is not uncorrelated. Approximate robust local regression does not work.
 
 While the fast fourier transformation is a common technique to speed up discrete convolution, it is not effective here.  Using the FFT makes code considerably more complicated (extra padding is needed to avoid the periodic nature of the FFT), and less flexible. Direct convolution with nested loops also makes it easier to predict smoothed values at specified locations, which it useful for cross-validation.
 
+\subsection{Kernel density estimates vs.\ kernel smoothed counts}
+
+Note that when applied to count summaries, these methods are subtly different from a kernel density estimate. A kernel mean is similar to a kernel density estimate: but a kernel mean divides by (normalises by) by the total weight at each point. This change is most noticeable with small bandwidths: the kernel density estimates will be very large (because they must integrate to 1), and outside the range of the data the estimates will be 0, where outside the range of the data the smoothed counts will be undefined (0/0).
+
 \subsection{``Automatic'' bandwidth selection}
 
-Kernel smoothing introduces a tuning parameter: the bandwidth. There is much research on how to pick the ``best'' bandwidth, but it depends critically on what best means and the specific type of smoothing. Typically, integrated mean squared error is used, which may not correspond with what we actually want for visualisation \citep{denby:2009}. We take a pragmatic attitude and use leave-one-out cross-validation (loocv) \citep{efron:1983} to provide a starting point for the user.  This is supported by \citep{loader:1999}.
+Kernel smoothing introduces a tuning parameter: the bandwidth. There is much research on how to pick the ``best'' bandwidth, but it depends critically on what measurement of quality and the specific type of smoothing. Typically, integrated mean squared error is used, which may not correspond with what we actually want for visualisation \citep{denby:2009}. We take a pragmatic attitude and use leave-one-out cross-validation (loocv) \citep{efron:1983} to provide a starting point for the user. This is supported by \citep{loader:1999}, which finds that plug-in methods often do not live up to their asymptotic claims.
 
 The intution behind loocv is simple: we compare the actual statistic at a location with its smoothed estimate computed without that observation. We then summarise all errors using the root mean squared error (rmse): $\sqrt{ \sum (y_i - \hat{y}_i)^2 / n}$. We can explore this summary across a range of possible grid values, or use standard numerical optimisation (L-BFGS-B \citep{byrd:1995}). While this is a good starting point, and is optimal in the sense of predicting new values, in our experience, this procedure tends to pick a bandwidth that is too small, preserving features in the data that while may be important, distract from the overall picture.
 
-With the bounded kernel we use, this is straightforward to implement efficiently, in $O(m b)$ where $b$ is the number of bins covered by the kernel ($b \ll m$). \citep{fan:1994} suggests incremental algorithms that may reduce computation time still further.
+With the bounded tricube kernel, this is straightforward to implement efficiently, in $O(m b)$ where $b$ is the number of bins covered by the kernel ($b \ll m$). \citep{fan:1994} suggests incremental algorithms that may reduce computation time still further.
 
 \subsection{Varying bandwidths}
 
