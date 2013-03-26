@@ -299,9 +299,19 @@ With the bounded tricube kernel, this is straightforward to implement efficientl
 
 \subsection{Varying bandwidths}
 
-Intuitively, it seems like we should be able to do better with an adaptive binwidth: using small bins where there is more data, or where the curve is especially wiggly. There are many approaches documented in the literature  \citep{terrell:1992, brockmann:1993,schucany:1995,herrmann:1997}. We follow the simple, but performant, approach outlined in \citep{fan:1995}: to find a per-location $h$, we divide the data into $m / (10 * \log_{10}(m))$ pieces, estimate the optimal bandwidth for each piece separately, then smooth the estimates.
+Intuitively, it seems like we should be able to do better with an adaptive binwidth: using small bins where there is more data, or where the curve is especially wiggly. There are many approaches documented in the literature  \citep{terrell:1992, brockmann:1993,schucany:1995,herrmann:1997}. We follow the simple, but performant, approach outlined in \citep{fan:1995}: to find a per-location $h$, we divide the data into $m / (10 * \log(m))$ pieces, estimate the optimal bandwidth for each piece separately, then smooth the estimates.
 
-% Example from Fan paper. 
+Figure~\ref{fig:varying-h} illustrates the process for a challenging function proposed by \citep{fan:1995}. 
+
+\begin{figure*}[htb]
+ \centering
+ \includegraphics[width=0.25\linewidth]{variable-h-raw}%
+ \includegraphics[width=0.25\linewidth]{variable-h-smoothed-fixed}%
+ \includegraphics[width=0.25\linewidth]{variable-h-h-est}%
+ \includegraphics[width=0.25\linewidth]{variable-h-smoothed-var}%
+ \caption{(Far left) A challenging function to smooth with fixed bandwidth \citep{fan:1995}. (Left) Data smoothed using single best bandwidth. (Right) Optimal bandwidth estimated on 10 separate pieces. (Far right) Data smoothed using individual bandwidth at each location.}
+ \label{fig:varying-h}
+\end{figure*}
 
 \section{Visualise}
 \label{sec:visualise}
