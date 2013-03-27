@@ -404,7 +404,7 @@ The reference implementation supplies many of the constraints that have guided t
 \subsection{Benchmarks}
 \label{sub:benchmarks}
 
-Figure~\ref{fig:benchmark} provides basic benchmarks for the bigvis package, over a range of data input sizes, bins and summary statistics. Timings were performed on a 2.6 GHz Intel Core i7, 15\" MacBook retina with 16 Gb ram. The benchmarks assume the data are already in memory: loading data from R's binary data format takes around 5s for $10^8$ observations.
+Figure~\ref{fig:benchmark} provides basic benchmarks for the bigvis package, over a range of data input sizes, bins and summary statistics. Timings were performed on a 2.6 GHz Intel Core i7, 15\" MacBook retina with 16 Gb ram and a solid state harddrive. The benchmarks assume the data are already in memory: loading data from R's binary data format takes around 2s for $10^8$ observations.
 
 Computing time grows linearly with input size and slowly with number of bins (only conditions where there were 10 or more observations in each bin shown). There is relatively little variation between the count, standard deviation and mean. The three summaries are all $O(n)$, but the standard deviation has a higher constant than the mean, and the median is slowest because it requires a complete copy of the data. 
 
@@ -420,17 +420,17 @@ These timings are lower bounds on potential performance: I have been programming
 \section{Future work}
 \label{sec:conclusion}
 
-While the reference implementation is in-memory and single-core, parallelisation and out-of-memory datastores are obvious areas for future work. We expect that fine pre-binning with simple summaries may be done in existing datastore; the grouping algorithm is trivial to implement in SQL, and most databases already provide simple summary statistics like the mean. Other systems, e.g.\ madlibs \citep{hellerstein:2012}, may provide richer summaries making grouping and summarisating in the database even more appealing. However, databases are is likely to be high-throughput and higher-latency than local computing. This suggests a workflow where we supplement fine prebinning in the database with coarser binning locally, especially when supporting interactive graphics.
+The bin-summarise-smooth framework provides a flexible toolkit for the visualisation of large datasets. 
 
-Something about column stores: \citep{kersten:2011}
+While the reference implementation is in-memory and single-core, parallelisation and out-of-memory datastores are obvious areas for future work. We expect that fine pre-binning with simple summaries may be done in existing datastore; the grouping algorithm is trivial to implement in SQL, and most databases already provide simple summary statistics like the mean. Other systems, e.g.\ madlibs \citep{hellerstein:2012}, may provide richer summaries making grouping and summarisating in the database even more appealing. Column store databases \citep{kersten:2011} provide an even more natural fit with statistical data, and maybe provide efficent out-of-memory backends. Computation on the GPU is appealing, especially outlined in \citep{liu:2013}
 
-Categorical data: prebinned, and can't be be smoothed.
+This paper has focussed on continuous data, but it is straightforward to extend to categorical variables with relatively few possible values. They can trivially be mapped to integers, and smoothing is typically not appropriate. The challenge arises with the visualisation, some seriation \citep{hahsler:2008} is often needed to draw out important patterns.  An additional challenge is when the number of categories grows with the size of the data: if there are more categories than pixels, figuring out sensible bins is hard.
 
-Visualisation is only one piece of the data analysis puzzle: we also need tools for transforming and modelling big data. 
+Finally, it's important to note that visualisation is only one piece of the data analysis puzzle: we also need tools for transforming and modelling big data. Visualisation is excellent for raising and refining questions, but does not scale well: a human needs to look at each plot. Statistical models and other algorithms scale well, but never reveal what you fundamentally don't expect. Tools for visualisation must interconnect with tools for modelling, so practitioners can take advantages of the strengths of both toolsets.
 
 %% if specified like this the section will be committed in review mode
 \acknowledgments{
-The authors wish to thank Yue Hue who coded up many of the initial prototypes. And to JJ Allaire, Dirk Eddelbuettel, Romain Francois and Carlos Scheidegger for their help with C++. Early versions of this work were generously sponsored by Revolution Analytics.}
+I'd like to thank Yue Hu who coded up the initial prototypes, as well as JJ Allaire, Dirk Eddelbuettel, Romain Francois and Carlos Scheidegger who helped me learn C++ and answered many of my dumb questions. Early versions of this work were generously sponsored by Revolution Analytics and Google.}
 
 \bibliographystyle{abbrv}
 % bibtool -x bigvis > references.bib
