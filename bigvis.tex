@@ -397,26 +397,25 @@ The bigvis package demonstrates the ideas discussed in this paper in an open-sou
 
 The C++ component makes use of templated functions to avoid the cost of virtual method lookup (this is small, but adds up with potentially 100's of millions of invocations). This adds an additional challenge when connecting R and C++ because templated functions are specialised at compile time, but the R code needs to call them dynamically at run-time. To work around this problem, a small code generater generates all specialised versions of templated functions. This is somewhat inelegant, but unavoidable when coupling programming languages with such different semantics.
 
-The bigvis {\sc api} is designed to make visualisation large datasets familiar to R users. It implements methods of the {\tt autoplot} generic providing default visualisations designed using the principles above, and also cleanly interfaces with other plotting tools in R, like ggplot2 \citep{me:ggplot2,wickham:2007d}, which makes it easy to build custom graphics based on the condensed and smoothed data.
+The bigvis {\sc api} is designed to make visualisation large datasets familiar to R users. It implements methods of the {\tt autoplot} generic providing default visualisations designed using the principles above, and also cleanly interfaces with other plotting tools in R, like ggplot2 \citep{me:ggplot2,wickham:2007d}, which makes it easy to build custom graphics based on the condensed and smoothed data. The figures in this paper were all drawn with ggplot2, and are heavily customised to make the most of limited space.
 
 The reference implementation provides some of the constraints that guide this paper. It is designed to be used by experienced analysts who will be using  sophisticated statistical and machine learning models in conjunction with visualisation.  It allows the analyst to create plots of $10^8$ observations in under 5s. $10^8$ doubles occupy a little less than 800 Mb, so about 20 vectors can be stored in 16 Gb of ram, with about 1 Gb left over. Support tiered model of data access: analyst may have access to billions or trillion of observation in a multi-machine data warehouse, but for most problems some interactive exploration is needed on a small subset or aggregate. 5s is an interactive timeframe for a REPL.  This is arbitrary but is currently about how long it takes to draw a scatterplot of 200,000. It's well above the threshold for direct manipulative interaction, but my personal experience seems to be on the order of what I expect when doing interactive data analysis in R.  Too much longer and I start checking my email and my productivity goes down hill.
 
 \subsection{Benchmarks}
 \label{sub:benchmarks}
 
-A back-of-the-envelope calculation gives us a performance target: assuming we want to condense 100 million observations into 10,000 bins in under 5s, we need to be able to compute each summary of 10,000 observations in 0.5 ms, which implies we have no more than 50 ns to process each observation. This is achievable with a high-performance language like C++. In the reference implementation, summarising $10^8$ observations in $10^4$ bins takes $\sim 2.8$s for the mean, $\sim 3$s for the variance, and $\sim 5.8$s the median. \footnote{Timings performed on a 2.6 GHz Intel Core i7, 15\" MacBook retina} \footnote{These are likely to be upper bounds as I have only programmed in C++ for 6 months, and did not use any performance tricks}.  More details are provided in Section~\ref{sub:benchmarks}.
+Figure~\ref{fig:benchmark} provides basic benchmarks for the bigvis package, over a range of data input sizes, bins and summary statistics. Timings performed were a 2.6 GHz Intel Core i7, 15\" MacBook retina. The benchmarks assume the data are already in memory: loading data from R's binary data format order of 5 for $10^8$ observations.
 
+Computing time grows linearly with input size and slowly with number of bins (only conditions where there were 10 or more observations in each bin shown). There is relatively little variation between the count, standard deviation and mean. The three summaries are all $O(n)$, but the standard deviation has a higher constant than the mean, and the median is slowest because it requires a complete copy of the data. 
 
-C++ is extremely efficient and the data structures and algorithms provided by the STL make programming considerably faster.  The C++ code is by no means expert and uses only a smattering of advanced C++ functions; I have been programming in C++ for less than six months. There are likely to be considerable opportunities for further optimisation.
+These timings are lower bounds on potential performance: I have been programming in C++ for less than six months so the C++ code is by no means expert and uses only a smattering of advanced C++ functions. There are likely to be considerable opportunities for further optimisation.
 
-These benchmarks ignore the time needed to load the data into R, which is on the order of 3-5 seconds once it has been serialised in R's binary dataformat.  Unfortunately due to inefficiencies in the implementation of R's data frame strucutre, data frames can not be used to work with very large vectors without substantial performance penalities. Future work will hopefully address some of the deficiencies in R's data model and make it easier to work with large datasets.
-
-
-% \begin{figure}[htb]
-%  \centering
-%  \includegraphics[width=1.5in]{sample}
-%  \caption{Sample illustration.}
-% \end{figure}
+\begin{figure}
+  \centering
+   \includegraphics[width=\linewidth]{benchmark}
+ \caption{Benchmarking bigvis package varying the input size (colour), number of bins (x-axis) and summary statistic (shape and line type). Note that both x and y axes are logged.}
+ \label{fig:benchmark}
+\end{figure}
 
 \section{Future work}
 \label{sec:conclusion}
