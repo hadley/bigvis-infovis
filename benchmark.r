@@ -48,6 +48,7 @@ ggplot(timing, aes(bin, elapsed, colour = n2, linetype = stat, shape = stat)) +
   guides(
     colour = guide_legend(reverse = T), 
     shape = guide_legend("Summary", reverse = T), 
-    linetype = guide_legend("Summary", reverse = T))
+    linetype = guide_legend("Summary", reverse = T)) +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "line"))
 
 ggsave("images/benchmark.pdf", width = 6, height = 4)
