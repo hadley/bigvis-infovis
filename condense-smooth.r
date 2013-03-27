@@ -32,9 +32,50 @@ ggsave("images/condense.pdf", width = 8, height = 7)
 
 dist_sum <- condense(bin(dist, 10), z = speed, summary = "sd")
 
+# Figure out optimal smoothing characteristics --------------------
+
 best_h(dist_sum, var = ".count")
 best_h(dist_sum, var = ".mean")
 best_h(dist_sum, var = ".sd")
+
+# dist_sum2 <- transform(dist_sum, 
+#   .count = scale(.count), 
+#   .mean = scale(.count), 
+#   .sd = scale(.sd))
+# 
+# best <- list(
+#   count = best_h(dist_sum2, var = ".count"),
+#   mean = best_h(dist_sum2, var = ".mean"),
+#   sd = best_h(dist_sum2, var = ".sd"))
+# bestdf <- data.frame(
+#   summary = names(best), 
+#   dist = unlist(best)
+#   err =
+# )
+
+
+grid <- h_grid(dist_sum2, max = 10, n = 50)
+rmses <- list(
+  count = rmse_cvs(dist_sum2, grid, var = ".count"),
+  mean = rmse_cvs(dist_sum2, grid, var = ".mean"),
+  sd = rmse_cvs(dist_sum2, grid, var = ".sd")  
+)
+rmses <- Map(function(x, n) {
+  x$summary <- n
+  x
+}, rmses, names(rmses))
+rmse <- do.call(rbind, rmses)
+
+qplot(dist, pmin(err, 2), data = rmse, colour  = summary, geom = "line") +
+  ylab("rmse") +
+  scale_x_continuous("Bandwidth (miles)") + 
+  theme(
+    plot.margin = unit(c(0, 0, 0, 0), "lines")
+  )
+ggsave("images/smooth-rmse.pdf", width = 6, height = 3)
+
+
+# Display smoothed data in one plot -----------------------------------
 
 smoothes <- list(
   count = smooth(dist_sum, 50, var = ".count", type = "robust"),
