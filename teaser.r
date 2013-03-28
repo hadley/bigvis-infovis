@@ -36,12 +36,6 @@ dsd2 <- peel(dsd, .995)
 autoplot(dsd2) + teaser
 ggsave("images/teaser-2.pdf", width = 8, height = 6)
 
-mt_trans <- function(lambda) {
-  trans_new("modulo",
-    function(x) mt(x, lambda),
-    function(x) inv_mt(x, lambda)
-  )
-}
 autoplot(dsd2) + scale_fill_gradient2(trans = mt_trans(0.25),
   breaks = c(-50, -10, 0, 10, 40, 100, 200, 400)) + teaser
 ggsave("images/teaser-3.pdf", width = 8, height = 6)

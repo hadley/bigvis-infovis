@@ -324,25 +324,46 @@ Figure~\ref{fig:varying-h} illustrates the process for a challenging function pr
 \section{Visualise}
 \label{sec:visualise}
 
-Once we have binned, summarised and smoothed the raw data, it is relatively straightforward to visualise it. When discussing visualisations, it's useful to distinguish between the variables in the original data set that we bin, and the new variables that we create through our summaries. To do so, we'll adopt the convention that a $(n, m)$-d dataset or visualisation represents a dataset with $n$ binned variables and $m$ summary variables. For example, Figure~\ref{fig:condense} shows 3 $(1, 3)$-d plots (distance + count, mean and sd), Figure~\ref{fig:condense-2d} show a $(2, 1)$-d plot (distance and speed + count), and Figure~\ref{fig:teaser} is another a $(2, 1)$-d visualisation, but produced from a $(2, 2)$-d dataset (distance and speed + mean).
+Once we have binned, summarised and smoothed the raw data, it is relatively straightforward to visualise it. When discussing visualisations, it's useful to distinguish between the binned variables from the original data set, and the new variables created by the summaries. To make that clear we'll adopt the convention that a $(n, m)$-d dataset or visualisation represents a dataset with $n$ binned variables and $m$ summary variables. For example, Figure~\ref{fig:condense} shows 3 $(1, 3)$-d plots (distance, count + mean + sd), Figure~\ref{fig:condense-2d} shows a $(2, 1)$-d plot (distance + speed, count), and Figure~\ref{fig:teaser} is a $(2, 1)$-d visualisation produced from a $(2, 2)$-d dataset (distance + speed, count + mean).
 
-Generally, we're interested in plots where both $m$ and $n$ are one or greater. A $(0, 1)$ plot would just display a single set of summary statistics, and a $(m, 0)$ plot would just show where the bins occurred. A $(0, 2)$ plot might be of interest, because it you could compare summary statistics within each bin (e.g.\ you might be interseted in bins with high mean and low standard deviation), but because it doesn't show the original data, we won't consider it in more detail here. 
+Generally, we're interested in plots where both $m$ and $n$ are one or more. A $(0, 1)$ plot would just display a single set of summary statistics, and a $(m, 0)$ plot would just show where the bins occurred. A $(0, 2)$ plot might be of interest, because you could compare summary statistics within each bin (e.g.\ you might be interseted in bins with high mean and low standard deviation), but because it doesn't show the original data, we won't consider it in more detail here. Section~\ref{sub:1d-plots} discussues $(1, 1)$-d plots, and Section~\ref{sub:2d-plots} $(2, 1)$-d plots. Section~\ref{sub:nd-plots} discusses general combinatoric methods for combining low-d plots to deal with n-d data.
 
-We'll focus first on low-d plots, $(1, 1)$-d and $(2, 1)$-d. $(1, 1)$-d plots can be display with a line, and described in Section~\ref{sub:1d-plots}. $(2, 1)$-d plots require a display like Figure~\ref{fig:teaser}, which is often called a heatmap \citep{wilkinson:2009} (although that name is usually reserved for plots of categorical data), or a a tile plot. Section~\ref{sub:2d-plots} discusses these in more detail. To deal with n-d data, Section~\ref{sub:nd-plots} discusses general combinatoric methods for combining low-d plots.
+As the size of data grows, the probability of finding very unusual values also increases. In practice, we found many large data visualisations like Figure~\ref{fig:teaser}, with most data concentrated in a small area. We have two tools to deal with this: peeling for spatial outliers, Section~\ref{sub:peeling}, and the modulus transformation for other outliers, Section~\ref{sub:mt}.
 
-As the size of data grows, the probability of finding very unusual values also grows. In practice, we have found the visualisation of most large datasets look like Figure~\ref{fig:teaser}, with most data concentrated in a small area. We have two tools to deal with this: peeling, when the outliers are spatial, described in Section~\ref{sub:peeling}; and the modulus transformation, when the outliers are in colour, size or another aesthetic, described in Section~\ref{sub:mt}.
-
-Finally, it's also important to preserve missing values: this is not an issue just for big data, but it's worth mentionining here. Section~\ref{sub:missing} discusses the importance of missing data.
+Finally, it's important to preserve missing values: this is not an issue just for big data, but it's worth mentionining here. Section~\ref{sub:missing} discusses the importance of missing data, and why the plots you've seen so far are potential misleading.
 
 \subsection{\texorpdfstring{$(1,1)$}{(1, 1)}-d plots}
 \label{sub:1d-plots}
 
-f the summary statistic is a count, this produces a frequency polygon \citep{scott:1985a} which is an improvement on the traditional histogram as it is easier to overlay multiple frequency polygons in one plot, and it unifies the display of counts and other summaries. If the statistic is not a count, we also need some way of displaying the count: this is important because we don't draw strong conclusions about areas with weak data support.
+$(1,1)$-d plot are simple to represent with a line. If the summary statistic is a count, this produces a frequency polygon \citep{scott:1985a}. This is an improvement on the traditional histogram as it is easier to overlay multiple frequency polygons in one plot, and it unifies the display of counts and other summaries. 
+
+If the statistic is not a count, we also need some way of calibrating for the uncertainty of the estimate: this is important because we don't draw strong conclusions about areas with weak data support. We've already seen one option in Figure~\ref{fig:condense}: display both the count and the summary in adjacent plots. Figure~\ref{fig:1d-error} shows two other options, mapping either the count or relative error to the colour of the line. Using the count shows us where the majority of the data lie, but a measurement of error is more important for calibrating our expectation of uncertainty. Using relative error makes it possible to use a common scale across all plots, where errors above a certain threshold (here 10\%) blend into the plot background. In this example, apart from the first line segment, all errors are less than 0.3\%.
+
+\begin{figure}
+  \centering
+   \includegraphics[width=0.8\linewidth]{1d-count}
+%    \includegraphics[width=0.8\linewidth]{1d-error}
+   \includegraphics[width=0.8\linewidth]{1d-relerr}
+ \caption{Two ways to calibrate the uncertainty associated with a $(1,1)$-d plot of mean speed on distance in 20-mile-wide bins. From top-to-bottom: the number of observations at each location, absolute error, or relative error.}
+ \label{fig:1d-error}
+\end{figure}
 
 \subsection{\texorpdfstring{$(2,1)$}{(2, 1)}-d plots}
 \label{sub:2d-plots}
 
-Techniques from cartography, e.g.\ \citep{kennelly:2002}, be used to improve the perception of such surfaces.
+$(2, 1)$-d plots require a display like Figure~\ref{fig:teaser}, which is often called a heatmap \citep{wilkinson:2009} (although that name is usually reserved for plots of categorical data), or a a tile plot. Other alternatives are contour plots (particularly for smoothed data), or the many other cartographic techniques for displaying surfaces \citep{kennelly:2002}.
+
+Calibrating for uncertainty is more challenging in 2d. Figure~\ref{fig:2d-error} demonstrates two ways of showing the error associated with the estimates in Figure~\ref{fig:teaser}. The top figure gives a tile plot of relative error overlaid with a smoothed contour plot. The bottom figure maps transparency to relative error so that regions with high errors are hard to see. Neither approach is perfect: a separate a tile plot of relative error is hard to integrate; overlaying a contour plot is challenging because the underlying surface is not very smooth and their are patch of unusual values; using transparency gives a qualitative not quantitative impression of uncertainty.
+
+Better approaches require interactivity, as discussed in the following section.
+
+\begin{figure}
+  \centering
+   \includegraphics[width=\linewidth]{2d-error}
+   \includegraphics[width=\linewidth]{2d-alpha}
+ \caption{Three ways to calibrate the uncertainty associated with a $(1,1)$-d plot of mean speed on distance in 20-mile-wide bins. From top-to-bottom: the number of observations at each location, absolute error, or relative error.}
+ \label{fig:2d-error}
+\end{figure}
 
 \subsection{\texorpdfstring{$(n, m)$}{(n, m)}-d plots}
 \label{sub:nd-plots}

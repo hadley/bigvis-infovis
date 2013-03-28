@@ -99,14 +99,6 @@ ggsave("images/smooth.pdf", width = 8, height = 7)
 
 ds <- condense(bin(dist, 50), bin(speed, 20))
 
-mt_trans <- function(lambda) {
-  trans_new("modulo",
-    function(x) mt(x, lambda),
-    function(x) inv_mt(x, lambda)
-  )
-}
-
-
 ggplot(ds, aes(dist, speed, fill = .count)) +
   geom_raster() +
   scale_fill_gradient("Count\n(x 1000)", low = "grey90", high = "black",
