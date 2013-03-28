@@ -88,7 +88,7 @@ The paper is accompanied by single-core in-memory reference implementation that 
   \includegraphics[width=5.33cm]{teaser-1}%
   \includegraphics[width=5.33cm]{teaser-2}%
   \includegraphics[width=5.33cm]{teaser-3}
-  \caption{Average delay (colour, in minutes) as a funtion of distance (x axis, in miles) and speed (y axis, in mph) for 76 million flights. The visualisation needs refinement to be useful: (Left) all data, (center) focussing on the middle 99.5\% of the data, (right) transforming average delay to shrink the tails and focus on values near 0. Flights with higher than average speeds (top-right) have shorter delays (red); more interestingly, a subset of shorter, slower flights (bottom-left) have average delays close to 0 (white).}
+  \caption{Average delay (colour, in minutes) as a funtion of distance (x axis, in miles) and speed (y axis, in mph) for 76 million flights. The initial view (left) refinement to be useful: first we focus on the middle 99.5\% of the data (center) then transform average delay to shrink the impact of unusually high delays and focus on typical values (right). Flights with higher than average speeds (top-right) have shorter delays (red); more interestingly, a subset of shorter, slower flights (bottom-left) have average delays close to 0 (white).}
   \label{fig:teaser}
 }
 
@@ -122,16 +122,15 @@ To illustrate the framework I include figures generated from the flight on-time 
 \label{sec:related-work}
 
 % Related statistics work
-There is an extensive body of statistical research on density estimation (smooth histograms) and smoothing, stretching back to the early 70s. Three good summaries of the work are \cite{scott:1992,bowman:1997,loader:1999a}.    \cite{hardle:1992,wand:1994,fan:1994} focus on the computational side of the smooth estimators, much of which occured in the early 90s as statisticians worked to transition their algorithms from mainframes to PCs.  Surprisingly none recognise that simple kernel smoothing is a convolution, and in high-dimensions rearranging the order of the convolution can change the problem from $O(n^d)$ to $O(nd)$. But these papers only treat special cases of this framework, fail to treat some of the problems associated with visualising large data and are not accompanied by code.
+There is an extensive body of statistical research on density estimation (smooth histograms) and smoothing, stretching back to the early 70s. Three good summaries of the work are \cite{scott:1992,bowman:1997,loader:1999a}.    \cite{hardle:1992,wand:1994,fan:1994} focus on the computational side, where much work occured in the early 90s as statisticians transitioned their algorithms from mainframes to PCs. However, the work focusses mostly on the statistical (asymptotic analysis) challenges, and is framed in the context of big data challenges of the time (1000s of points).
 
 % Infovis and kde
-\citep{lampe:2011} uses kernel density estimates in an infovis context, but fails to connect their work to existing statistical work. Provide a very fast implementation on the GPU, which presumably could be made even faster if they read previous work. Other techniques from infovis are related to kernel density estimation. Footprint splatting \citep{becker:1997,yang:2003} is exactly equivalent to kernel density estimation. Similarly, using transparency as a way of dealing with overplotting, as in ..., can be seen as a special type of kernel density estimate where the kernel is a uniform radial point.
+The statistical literature on smoothing has had relatively little impact on infovis. \citep{lampe:2011} uses kernel density estimates, and provide a very fast GPU-based implementation, but fail to connect their work to the existing statistics literature and thus reinvent the wheel. Other techniques from infovis can be framed as kernel density problems: footprint splatting \citep{becker:1997,yang:2003} is kde by another name, and using transparency to deal with overplotting \citep{johansson:2005,unwin:2006} can be framed as using a kde with a uniform radial kernel.
 
 % Other papers on large data
-There are other techniques to deal scatterplots of large data. Hexbin plots \citep{carr:1987} bin 2d data using hexagons to avoid the perceptual issues related to gridding. Generalised scatterplots \citep{keim:2010} use distortion, but no discussion of computational performance. \citep{heer:2012} discusses the challenges of visualising large data, and proposes interaction as a solution. Emphasises the challenge of data cleaning and manipulation.
+\citep{heer:2012} discusses the general challenges of visualising large data, and proposes interaction as a solution. Others have used distortion \citep{keim:2010} or sampling \citep{wegman:1995, bertini:2006a}. Distortion breaks down with high density as low density regions may be distant, losing spatial information. Sampling, can be effective, particularly if non uniform methods are used to overweight unusual values, but to have confidence in the final results you must either look at multiple plots or very careful select tuning parameters.
 
-\citep{unwin:2006} aggregates much work from statistical graphics.
-
+\citep{liu:2013} describes a strikingly similar framework to this paper, motivated by interactive web graphics for large data. It is complimentary to my work, focussing on interaction and high-performance parallel GPU computation within the browser, but uses only the count summary and does not discuss smoothing. 
 
 \section{Condense}
 \label{sec:condense}
@@ -355,7 +354,7 @@ $(2, 1)$-d plots require a display like Figure~\ref{fig:teaser}, which is often 
 
 Calibrating for uncertainty is more challenging in 2d. Figure~\ref{fig:2d-error} demonstrates two ways of showing the error associated with the estimates in Figure~\ref{fig:teaser}. The top figure gives a tile plot of relative error overlaid with a smoothed contour plot. The bottom figure maps transparency to relative error so that regions with high errors are hard to see. Neither approach is perfect: a separate a tile plot of relative error is hard to integrate; overlaying a contour plot is challenging because the underlying surface is not very smooth and their are patch of unusual values; using transparency gives a qualitative not quantitative impression of uncertainty.
 
-Better approaches require interactivity, as discussed in the following section.
+Better approaches likely require interactivity, as discussed in the following section
 
 \begin{figure}
   \centering
