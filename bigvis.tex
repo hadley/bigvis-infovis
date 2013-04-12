@@ -143,7 +143,7 @@ The bin and summary steps condense the large original dataset into a smaller set
 
 Binning is an injective mapping from the real numbers to a fixed and finite set of integers. We use {\bf fixed width binning}, which is extremely fast, easily extended from 1d to nd, and while statistically na\"ive, there is little evidence that variable binwidths do better. 
 
-Binning needs to be considered as a separate step, as it may be performed outside of the visualisation environment. For example, binning could be done in the database, reducing data transmission costs by half since integers need only 4 bits of storage, while doubles need 8. 
+Binning needs to be considered as a separate step, as it may be performed outside of the visualisation environment. For example, binning could be done in the database, reducing data transmission costs by half since usually integers need only 4 bytes of storage, while doubles need 8. 
 
 \subsubsection{Computation}
 
